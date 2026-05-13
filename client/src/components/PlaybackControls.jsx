@@ -188,56 +188,53 @@ export default function PlaybackControls() {
 
         {/* ── Sync offset nudge ── */}
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 6,
+          display: 'flex', alignItems: 'center', gap: 10,
           background: 'rgba(255,255,255,0.06)',
           border: '0.5px solid rgba(255,255,255,0.1)',
           borderRadius: 'var(--radius-pill)',
-          padding: '3px 10px 3px 6px',
+          padding: '3px 12px 3px 10px',
         }}>
-          <span style={{ fontSize: 10, color: '#6B6560', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', letterSpacing: '0.06em' }}>
+          <span style={{ fontSize: 10, color: '#6B6560', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', letterSpacing: '0.06em', fontWeight: 600 }}>
             SYNC
           </span>
           <button
             id="sync-earlier"
-            title="Lyrics earlier (−100 ms)"
-            onClick={() => setSyncOffsetMs(Math.max(-2000, syncOffsetMs - 100))}
-            style={{
-              width: 24, height: 24, border: 'none', background: 'transparent',
-              color: '#6B6560', cursor: 'pointer', fontSize: 16, lineHeight: 1,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              borderRadius: 4, transition: 'color 0.15s',
+            onClick={() => setSyncOffsetMs(Math.max(-3000, syncOffsetMs - 100))}
+            style={{ background: 'none', border: 'none', color: '#6B6560', cursor: 'pointer', fontSize: 18 }}
+          >−</button>
+          
+          <input
+            type="range"
+            min={-3000}
+            max={3000}
+            step={50}
+            value={syncOffsetMs}
+            onChange={e => setSyncOffsetMs(Number(e.target.value))}
+            style={{ 
+              width: 80, 
+              accentColor: 'var(--player-text)',
+              cursor: 'pointer',
+              height: 4
             }}
-            onMouseEnter={e => e.currentTarget.style.color = '#F5F0E8'}
-            onMouseLeave={e => e.currentTarget.style.color = '#6B6560'}
-          >
-            −
-          </button>
+          />
+
+          <button
+            id="sync-later"
+            onClick={() => setSyncOffsetMs(Math.min(3000, syncOffsetMs + 100))}
+            style={{ background: 'none', border: 'none', color: '#6B6560', cursor: 'pointer', fontSize: 18 }}
+          >+</button>
+
           <span
             id="sync-offset-display"
             style={{
               fontSize: 11, fontFamily: 'monospace', color: syncOffsetMs === 0 ? '#6B6560' : '#F5F0E8',
-              minWidth: 52, textAlign: 'center', cursor: 'pointer',
+              minWidth: 52, textAlign: 'center', cursor: 'pointer', fontWeight: 600
             }}
             title="Click to reset"
             onClick={() => setSyncOffsetMs(0)}
           >
             {syncOffsetMs >= 0 ? '+' : ''}{syncOffsetMs}ms
           </span>
-          <button
-            id="sync-later"
-            title="Lyrics later (+100 ms)"
-            onClick={() => setSyncOffsetMs(Math.min(2000, syncOffsetMs + 100))}
-            style={{
-              width: 24, height: 24, border: 'none', background: 'transparent',
-              color: '#6B6560', cursor: 'pointer', fontSize: 16, lineHeight: 1,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              borderRadius: 4, transition: 'color 0.15s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.color = '#F5F0E8'}
-            onMouseLeave={e => e.currentTarget.style.color = '#6B6560'}
-          >
-            +
-          </button>
         </div>
 
         {/* Accuracy chip */}

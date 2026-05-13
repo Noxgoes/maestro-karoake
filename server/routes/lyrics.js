@@ -64,39 +64,44 @@ router.get('/', async (req, res) => {
         if (!step.q || step.q.length < 2) continue;
         console.log(`[LRCLIB] Step: ${step.label} -> Query: "${step.q}"...`);
         
-        const { data: results } = await axios.get('https://lrclib.net/api/search', {
-          params: { q: step.q },
-          timeout: 20000,
-          headers: { 'User-Agent': 'MaestroKaraoke/1.0' }
-        });
+        try {
+          const { data: results } = await axios.get('https://lrclib.net/api/search', {
+            params: { q: step.q },
+            timeout: 30000, // 30s max for slow days
+            headers: { 'User-Agent': 'MaestroKaraoke/1.0' }
+          });
 
-        if (Array.isArray(results) && results.length > 0) {
-          // Detect Hindi script
-          const hindiResults = results.filter(r => /[\u0900-\u097F]/.test(r.plainLyrics || r.syncedLyrics || ''));
-          const pool = hindiResults.length > 0 ? hindiResults : results;
+          if (Array.isArray(results) && results.length > 0) {
+            // Detect Hindi script
+            const hindiResults = results.filter(r => /[\u0900-\u097F]/.test(r.plainLyrics || r.syncedLyrics || ''));
+            const pool = hindiResults.length > 0 ? hindiResults : results;
 
-          const bestMatch = pool
-            .filter(r => r.syncedLyrics)
-            .sort((a, b) => {
-              if (duration) {
-                const diffA = Math.abs(a.duration - parseFloat(duration));
-                const diffB = Math.abs(b.duration - parseFloat(duration));
-                return diffA - diffB;
-              }
-              return 0;
-            })[0] || pool[0];
+            const bestMatch = pool
+              .filter(r => r.syncedLyrics)
+              .sort((a, b) => {
+                if (duration) {
+                  const diffA = Math.abs(a.duration - parseFloat(duration));
+                  const diffB = Math.abs(b.duration - parseFloat(duration));
+                  return diffA - diffB;
+                }
+                return 0;
+              })[0] || pool[0];
 
-          if (bestMatch && (bestMatch.syncedLyrics || bestMatch.plainLyrics)) {
-            syncedLyrics = bestMatch.syncedLyrics;
-            plainLyricsFallback = bestMatch.plainLyrics;
-            
-            // Sync official metadata back if it was messy
-            if (officialArtist === 'Genius Romanizations' || !officialArtist) officialArtist = bestMatch.artistName;
-            if (officialTitle.includes('-') || officialTitle.includes('(')) officialTitle = bestMatch.trackName;
-            
-            console.log(`[LRCLIB] ✓ Success with ${step.label}: "${bestMatch.trackName}"`);
-            break; 
+            if (bestMatch && (bestMatch.syncedLyrics || bestMatch.plainLyrics)) {
+              syncedLyrics = bestMatch.syncedLyrics;
+              plainLyricsFallback = bestMatch.plainLyrics;
+              
+              // Sync official metadata back if it was messy
+              if (officialArtist === 'Genius Romanizations' || !officialArtist) officialArtist = bestMatch.artistName;
+              if (officialTitle.includes('-') || officialTitle.includes('(')) officialTitle = bestMatch.trackName;
+              
+              console.log(`[LRCLIB] ✓ Success with ${step.label}: "${bestMatch.trackName}"`);
+              break; 
+            }
           }
+        } catch (stepErr) {
+          console.warn(`[LRCLIB] Step "${step.label}" failed or timed out: ${stepErr.message}`);
+          // Continue to next step
         }
       }
 
