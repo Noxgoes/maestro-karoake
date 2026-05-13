@@ -390,15 +390,20 @@ export default function PitchCanvas() {
                     transform={`translate(${w.x}, ${w.y}) rotate(${rotation})`}
                     style={{ 
                       transition: 'all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                      cursor: 'pointer' 
+                      cursor: 'pointer',
+                      pointerEvents: 'all'
                     }}
-                    onClick={() => setManualLine(Number(line.lineIndex))}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setManualLine(Number(line.lineIndex));
+                    }}
                   >
                     <g
                       style={{
                         animation: `fadeInUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards`,
                         animationDelay: `${Math.min(2, w.wordIndex * 0.05)}s`,
                         opacity: 0,
+                        pointerEvents: 'none'
                       }}
                     >
                       <text
@@ -446,22 +451,26 @@ export default function PitchCanvas() {
       {manualLine !== null && (
         <button
           id="reset-manual-focus"
-          onClick={() => setManualLine(null)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setManualLine(null);
+          }}
           style={{
-            position: 'absolute',
+            position: 'sticky',
             bottom: 24,
-            right: 24,
+            float: 'right',
+            marginRight: 24,
             background: 'var(--player-text)',
             color: 'var(--player-bg)',
             border: 'none',
             borderRadius: 'var(--radius-pill)',
-            padding: '8px 16px',
+            padding: '10px 20px',
             fontSize: '11px',
-            fontWeight: 700,
+            fontWeight: 800,
             fontFamily: 'Inter, sans-serif',
             cursor: 'pointer',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-            zIndex: 100,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+            zIndex: 9999,
             display: 'flex',
             alignItems: 'center',
             gap: 8,
