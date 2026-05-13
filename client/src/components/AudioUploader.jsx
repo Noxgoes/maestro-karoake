@@ -11,6 +11,7 @@ export default function AudioUploader() {
   const [tab, setTab] = useState('upload');
   const [file, setFile] = useState(null);
   const [ytUrl, setYtUrl] = useState('');
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
   const [isFetchingYt, setIsFetchingYt] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
@@ -45,7 +46,6 @@ export default function AudioUploader() {
   useEffect(() => {
     if (ytUrl && ytUrl.includes('youtube.com') || ytUrl.includes('youtu.be')) {
       const fetchYtInfo = async () => {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
         try {
           const res = await fetch(`${apiUrl}/api/audio/info?url=${encodeURIComponent(ytUrl)}`);
           if (res.ok) {
