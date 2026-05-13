@@ -39,7 +39,7 @@ router.get('/', async (req, res) => {
 
       let { data: searchResults } = await axios.get('https://lrclib.net/api/search', {
         params: searchParams,
-        timeout: 10000,
+        timeout: 20000,
         headers: {
           'User-Agent': 'MaestroKaraoke/1.0 (https://github.com/Noxgoes/maestro-karoake)'
         }
@@ -50,7 +50,7 @@ router.get('/', async (req, res) => {
         console.log(`[LRCLIB] Title+Artist failed. Trying Title-only: ${officialTitle}`);
         const secondary = await axios.get('https://lrclib.net/api/search', {
           params: { q: officialTitle },
-          timeout: 10000,
+          timeout: 20000,
           headers: { 'User-Agent': 'MaestroKaraoke/1.0 (https://github.com/Noxgoes/maestro-karoake)' }
         });
         searchResults = secondary.data;
