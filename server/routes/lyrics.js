@@ -40,65 +40,70 @@ router.get('/', async (req, res) => {
     let syncedLyrics = null;
     let plainLyricsFallback = null;
     try {
-      console.log(`[LRCLIB DEBUG] Search -> artist: ${officialArtist}, title: ${officialTitle}, targetDuration: ${duration}`);
-      
-      // Use a broad search query to be more forgiving with spelling/formatting
-      const searchParams = { q: `${officialTitle} ${officialArtist}`.trim() };
-
-      let { data: searchResults } = await axios.get('https://lrclib.net/api/search', {
-        params: searchParams,
-        timeout: 20000,
-        headers: {
-          'User-Agent': 'MaestroKaraoke/1.0 (https://github.com/Noxgoes/maestro-karoake)'
-        }
-      });
-
-      // ── SECONDARY FALLBACK: If title+artist fails, try Title Only ──
-      if ((!searchResults || searchResults.length === 0) && officialArtist) {
-        console.log(`[LRCLIB] Title+Artist failed. Trying Title-only: ${officialTitle}`);
-        const secondary = await axios.get('https://lrclib.net/api/search', {
-          params: { q: officialTitle },
-          timeout: 20000,
-          headers: { 'User-Agent': 'MaestroKaraoke/1.0 (https://github.com/Noxgoes/maestro-karoake)' }
-        });
-        searchResults = secondary.data;
-      }
-
-      if (Array.isArray(searchResults) && searchResults.length > 0) {
-        // ── SCRIPT SMART-PICKER ──
-        // Look for results that contain Devanagari (Hindi) characters
-        const hindiResults = searchResults.filter(r => /[\u0900-\u097F]/.test(r.plainLyrics || r.syncedLyrics || ''));
+      // ── METADATA CLEANING ──
+      // Genius often returns "Song Title (Romanized)" or "Artist - Song Title"
+      // We clean this up to help LRCLIB find it.
+      const cleanTitle = officialTitle
+        .replace(/\(Romanized\)/gi, '')
+        .replace(/\(Hindi\)/gi, '')
+        .replace(/\[.*\]/g, '')
+        .split(' - ').pop() // Handle "Artist - Title" formats
+        .trim();
         
-        // Pick from Hindi results if available, otherwise use all results
-        const priorityPool = hindiResults.length > 0 ? hindiResults : searchResults;
+      const cleanArtist = (officialArtist === 'Genius Romanizations') ? (artist || '') : officialArtist;
 
-        const bestMatch = priorityPool
-          .filter(r => r.syncedLyrics)
-          .sort((a, b) => {
-            if (duration) {
-              const diffA = Math.abs(a.duration - parseFloat(duration));
-              const diffB = Math.abs(b.duration - parseFloat(duration));
-              return diffA - diffB;
-            }
-            // Fallback: prioritize exact track name match
-            const aExact = a.trackName.toLowerCase() === q.toLowerCase() ? 0 : 1;
-            const bExact = b.trackName.toLowerCase() === q.toLowerCase() ? 0 : 1;
-            return aExact - bExact;
-          })[0] || priorityPool[0];
+      const searchSteps = [
+        { q: `${cleanTitle} ${cleanArtist}`.trim(), label: 'Cleaned Metadata' },
+        { q: cleanTitle, label: 'Title Only' },
+        { q: q, label: 'Original Query Fallback' }
+      ];
 
-        if (bestMatch) {
-          console.log(`[LRCLIB] ✓ Match Found: ${bestMatch.trackName} (${(bestMatch.duration / 60).toFixed(2)}m)`);
-          syncedLyrics = bestMatch.syncedLyrics;
-          plainLyricsFallback = bestMatch.plainLyrics;
-          // If we didn't get title/artist from Genius, use LRCLIB's
-          if (!officialTitle || officialTitle === q) officialTitle = bestMatch.trackName;
-          if (!officialArtist) officialArtist = bestMatch.artistName;
-        } else {
-          console.log(`[LRCLIB] ✗ Results found, but none had synced/plain lyrics.`);
+      console.log(`[LRCLIB] Starting search pipeline for: "${q}"`);
+
+      for (const step of searchSteps) {
+        if (!step.q || step.q.length < 2) continue;
+        console.log(`[LRCLIB] Step: ${step.label} -> Query: "${step.q}"...`);
+        
+        const { data: results } = await axios.get('https://lrclib.net/api/search', {
+          params: { q: step.q },
+          timeout: 20000,
+          headers: { 'User-Agent': 'MaestroKaraoke/1.0' }
+        });
+
+        if (Array.isArray(results) && results.length > 0) {
+          // Detect Hindi script
+          const hindiResults = results.filter(r => /[\u0900-\u097F]/.test(r.plainLyrics || r.syncedLyrics || ''));
+          const pool = hindiResults.length > 0 ? hindiResults : results;
+
+          const bestMatch = pool
+            .filter(r => r.syncedLyrics)
+            .sort((a, b) => {
+              if (duration) {
+                const diffA = Math.abs(a.duration - parseFloat(duration));
+                const diffB = Math.abs(b.duration - parseFloat(duration));
+                return diffA - diffB;
+              }
+              return 0;
+            })[0] || pool[0];
+
+          if (bestMatch && (bestMatch.syncedLyrics || bestMatch.plainLyrics)) {
+            syncedLyrics = bestMatch.syncedLyrics;
+            plainLyricsFallback = bestMatch.plainLyrics;
+            
+            // Sync official metadata back if it was messy
+            if (officialArtist === 'Genius Romanizations' || !officialArtist) officialArtist = bestMatch.artistName;
+            if (officialTitle.includes('-') || officialTitle.includes('(')) officialTitle = bestMatch.trackName;
+            
+            console.log(`[LRCLIB] ✓ Success with ${step.label}: "${bestMatch.trackName}"`);
+            break; 
+          }
         }
-      } else {
-        console.log(`[LRCLIB] ✗ No results found on LRCLIB.`);
       }
+
+      if (!syncedLyrics && !plainLyricsFallback) {
+        console.log(`[LRCLIB] ✗ No lyrics found in any search step.`);
+      }
+
     } catch (err) {
       console.error('[LRCLIB] API error:', err.message);
       if (err.response) {
