@@ -113,18 +113,7 @@ export function alignLyrics(lyrics, pitchNotes, audioDurationSecs) {
       const ns = n.startTimeSeconds * 1000;
       return ns >= cursorMs && ns <= cursorMs + 5000;
     });
-    if (nearbyNotes.length === 0) {
-      const futureNotes = sortedNotes.filter(n => n.startTimeSeconds * 1000 > cursorMs + 2000);
-      if (futureNotes.length > 0) {
-        const nextStart = futureNotes[0].startTimeSeconds * 1000;
-        if (nextStart - cursorMs > 6000) {
-          cursorMs = nextStart;
-        }
-      }
-    }
-
-    const timePerSyl = lineDurMs / Math.max(1, lineSyls);
-    let wordCursor = cursorMs;
+    const words = lineMap[lk];
 
     words.forEach(w => {
       const syls    = Math.max(1, syllable(w.word));
@@ -137,7 +126,45 @@ export function alignLyrics(lyrics, pitchNotes, audioDurationSecs) {
       });
       wordCursor += wordDur;
     });
-    cursorMs += lineDurMs;
+  });
+
+  return aligned;
+}
+
+export function alignLyricsNaive(geniusLyrics, pitchNotes, songDurationMs) {
+  const sortedNotes = [...pitchNotes].sort((a, b) => a.startTimeSeconds - b.startTimeSeconds);
+  const aligned = [];
+
+  const lineMap = {};
+  geniusLyrics.forEach(w => {
+    if (!lineMap[w.lineIndex]) lineMap[w.lineIndex] = [];
+    lineMap[w.lineIndex].push(w);
+  });
+
+  const lineKeys = Object.keys(lineMap).sort((a, b) => Number(a) - Number(b));
+  const totalSyllables = geniusLyrics.reduce((acc, w) => acc + Math.max(1, syllable(w.word)), 0);
+
+  // ── SMARTER START: Detect first vocal to avoid intro drift ──
+  const firstVoiced = sortedNotes.find(n => n.amplitude > 0.1);
+  const startOffset = firstVoiced ? (firstVoiced.startTimeSeconds * 1000) : 0;
+  const effectiveDuration = songDurationMs - startOffset;
+  const msPerSyl = effectiveDuration / Math.max(1, totalSyllables);
+
+  let wordCursor = startOffset;
+
+  lineKeys.forEach(lk => {
+    const words = lineMap[lk];
+    words.forEach(w => {
+      const syls = Math.max(1, syllable(w.word));
+      const dur = syls * msPerSyl;
+      aligned.push({
+        ...w,
+        startMs:  wordCursor,
+        endMs:    wordCursor + dur,
+        midiNote: getMidiAtTime(sortedNotes, wordCursor + dur / 2, 0.12),
+      });
+      wordCursor += dur;
+    });
   });
 
   return aligned;

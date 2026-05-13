@@ -127,8 +127,16 @@ export default function PitchCanvas() {
     return { linesData: _linesData, minMidi: _minMidi, maxMidi: _maxMidi, svgWidth: _svgWidth };
   }, [alignedLyrics]);
 
-  if (isAnalyzing || !alignedLyrics || alignedLyrics.length === 0) {
+  if (isAnalyzing) {
     return <LyricsSkeleton />;
+  }
+
+  if (!alignedLyrics || alignedLyrics.length === 0) {
+    return (
+      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+        <p style={{ fontSize: '1.2rem', fontWeight: 500 }}>No lyrics found for this song.</p>
+      </div>
+    );
   }
 
   // ── FIX 4: Correct gap fallback ───────────────────────────────────────────

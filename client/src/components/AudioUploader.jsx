@@ -138,7 +138,10 @@ export default function AudioUploader() {
         })
         .catch(() => {});
 
-      const lyricsPromise = performLyricsFetch(currentSong, currentArtist, audioBuffer.duration, signal);
+      const lyricsPromise = performLyricsFetch(currentSong, currentArtist, audioBuffer.duration, signal).then(data => {
+        console.log(`%c[LYRIC SOURCE] Lyrics retrieved from: ${data.source || 'Unknown'}`, 'color: #7c3aed; font-weight: bold; background: #f3f0ff; padding: 2px 6px; border-radius: 4px;');
+        return data;
+      });
       
       await Promise.all([metadataPromise, lyricsPromise]);
 
@@ -154,9 +157,11 @@ export default function AudioUploader() {
       console.error('Analysis pipeline failed:', err);
       setError(err.message);
       setAnalysisStep('');
+      setShowPlayer(false);
     } finally {
       _abortController = null;
       window.__karaAbortAnalysis = null;
+      setIsAnalyzing(false);
     }
   };
 
