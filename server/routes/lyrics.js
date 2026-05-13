@@ -1,6 +1,6 @@
 import express from 'express';
 import axios from 'axios';
-import { fetchLyrics } from '../utils/geniusClient.js';
+import { fetchLyrics, searchGenius } from '../utils/geniusClient.js';
 
 const router = express.Router();
 
@@ -18,16 +18,24 @@ router.get('/', async (req, res) => {
     let source = 'Genius';
 
     try {
-      console.log(`[LYRICS] Searching Genius for: ${q}...`);
-      const data = await fetchLyrics(q, artist || '');
-      lyrics = { original: data.original, romanized: data.romanized };
-      officialArtist = data.officialArtist;
-      officialTitle = data.officialTitle;
-      console.log(`[LYRICS] ✓ Genius success: ${officialTitle}`);
+      console.log(`[METADATA] Fetching official info from Genius: ${q}...`);
+      // We only use Genius for metadata (posters, official names)
+      // We skip fetchLyrics() because it tries to scrape, which is blocked.
+      const searchResult = await searchGenius(q + (artist ? ` ${artist}` : ''));
+      
+      if (searchResult) {
+        officialArtist = searchResult.primary_artist.name;
+        officialTitle = searchResult.title;
+        // Use the Genius header image as the poster fallback
+        lyrics.poster = searchResult.header_image_url; 
+        console.log(`[METADATA] ✓ Genius info found: ${officialTitle}`);
+      }
     } catch (err) {
-      console.warn(`[LYRICS] Genius failed: ${err.message}. Trying LRCLIB fallback...`);
-      source = 'LRCLIB';
+      console.warn(`[METADATA] Genius metadata search failed: ${err.message}`);
     }
+    
+    // We ALWAYS use LRCLIB as the primary source for lyrics now
+    source = 'LRCLIB';
     
     let syncedLyrics = null;
     let plainLyricsFallback = null;

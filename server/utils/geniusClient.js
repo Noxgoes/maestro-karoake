@@ -13,7 +13,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 const GENIUS_ACCESS_TOKEN = process.env.GENIUS_ACCESS_TOKEN;
 const GENIUS_BASE_URL = process.env.GENIUS_BASE_URL || 'https://api.genius.com';
 
-async function searchGenius(query) {
+export async function searchGenius(query) {
   if (!GENIUS_ACCESS_TOKEN) {
     console.warn('GENIUS_ACCESS_TOKEN is not set, skipping API call');
     return null;
