@@ -1,0 +1,423 @@
+import React from 'react';
+import AudioUploader from './components/AudioUploader';
+import PitchCanvas from './components/PitchCanvas';
+import PlaybackControls from './components/PlaybackControls';
+import SearchBar from './components/SearchBar';
+import AnalysisLoadingScreen from './components/AnalysisLoadingScreen';
+import { useAppStore } from './store/appStore';
+import { useMicPitch } from './hooks/useMicPitch';
+import { useAudioControls } from './context/AudioPlayerContext';
+
+// ── Album card data ────────────────────────────────────────────────────────
+const ALBUM_CARDS = [
+  { id: 'starboy',   src: 'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/b5/92/bb/b592bb72-52e3-e756-9b26-9f56d08f47ab/16UMGIM67864.rgb.jpg/600x600bb.jpg', w: 160, top: '7%',  left: '4%',   rot: -12, blur: 0,   opacity: 1,   float: 'a' },
+  { id: 'ts1989',    src: 'https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/89/4a/4a/894a4ab9-b0b0-9ea5-ca41-8da0b9b79453/14UMDIM03405.rgb.jpg/600x600bb.jpg', w: 130, top: '12%', left: '17%',  rot: 8,   blur: 0,   opacity: 1,   float: 'b' },
+  { id: 'divide',    src: 'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/15/e6/e8/15e6e8a4-4190-6a8b-86c3-ab4a51b88288/190295851286.jpg/600x600bb.jpg', w: 155, top: '30%', left: '13%',  rot: -6,  blur: 0,   opacity: 1,   float: 'a' },
+  { id: 'yjhd',      src: 'https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/62/d6/74/62d67432-0670-631f-db6a-d4bac3adae4b/8902894353328_cover.jpg/600x600bb.jpg', w: 120, top: '16%', left: '1%',   rot: 14,  blur: 1.5, opacity: 0.7, float: 'b' },
+  { id: 'kabirsingh',src: 'https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/f6/70/84/f6708434-0123-ff36-0ac3-7401e8cf0f94/8902894360807_cover.jpg/600x600bb.jpg', w: 125, top: '56%', left: '3%',   rot: -10, blur: 0,   opacity: 1,   float: 'a' },
+  { id: 'adele21',   src: 'https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/eb/ca/25/ebca2596-cd1e-b295-91a3-771c868d0a79/191404113868.png/600x600bb.jpg', w: 140, top: '73%', left: '1%',   rot: 6,   blur: 0,   opacity: 1,   float: 'b' },
+  { id: 'okcomputer',src: 'https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/07/60/ba/0760ba0f-148c-b18f-d0ff-169ee96f3af5/634904078164.png/600x600bb.jpg', w: 130, top: '76%', left: '18%',  rot: -8,  blur: 0,   opacity: 1,   float: 'a' },
+  { id: '3idiots',   src: 'https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/6e/99/7c/6e997cb1-1d80-3dc1-121d-53919ccace52/840214403941.png/600x600bb.jpg', w: 145, top: '6%',  left: '54%',  rot: 10,  blur: 0,   opacity: 1,   float: 'b' },
+  { id: 'rockstar',  src: 'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/56/ac/41/56ac41f7-99f3-3eae-3b07-443167292c4e/8902894697408_cover.jpg/600x600bb.jpg', w: 130, top: '14%', left: '70%',  rot: -14, blur: 0,   opacity: 1,   float: 'a' },
+  { id: 'thriller',  src: 'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/32/4f/fd/324ffda2-9e51-8f6a-0c2d-c6fd2b41ac55/074643811224.jpg/600x600bb.jpg', w: 105, top: '8%',  left: '88%',  rot: 12,  blur: 1.5, opacity: 0.65,float: 'b' },
+  { id: 'znmd',      src: 'https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/b0/3f/4c/b03f4cca-8a6a-f506-4490-3263b4fb620c/8902894696296_cover.jpg/600x600bb.jpg', w: 120, top: '28%', left: '84%',  rot: -8,  blur: 0,   opacity: 1,   float: 'a' },
+  { id: 'future',    src: 'https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/e9/c5/a8/e9c5a8a0-d698-137b-2e85-cf3a8d9548f8/190295303372.jpg/600x600bb.jpg', w: 148, top: '48%', left: '76%',  rot: 6,   blur: 0,   opacity: 1,   float: 'b' },
+  { id: 'gullyboy',  src: 'https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/3a/5e/60/3a5e6034-8755-f0bf-d4f0-c7f96d3b45bb/8718857674948.png/600x600bb.jpg', w: 140, top: '68%', left: '82%',  rot: -10, blur: 0,   opacity: 1,   float: 'a' },
+  { id: 'damn',      src: 'https://is1-ssl.mzstatic.com/image/thumb/Music112/v4/ab/16/ef/ab16efe9-e7f1-66ec-021c-5592a23f0f9e/17UMGIM88793.rgb.jpg/600x600bb.jpg', w: 130, top: '70%', left: '67%',  rot: 14,  blur: 0,   opacity: 1,   float: 'b' },
+  { id: 'abbey',     src: 'https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/48/53/43/485343e3-dd6a-0034-faec-f4b6403f8108/13UMGIM63890.rgb.jpg/600x600bb.jpg', w: 120, top: '82%', left: '35%',  rot: 8,   blur: 0,   opacity: 1,   float: 'b' },
+  { id: 'dilse',     src: 'https://is1-ssl.mzstatic.com/image/thumb/Music114/v4/8e/f8/85/8ef88544-a6c7-018b-0a75-dc3b6b024fa0/cover.jpg/600x600bb.jpg', w: 90,  top: '4%',  left: '37%',  rot: -16, blur: 3,   opacity: 0.5, float: 'a' },
+];
+
+function AlbumScatter() {
+  return (
+    <>
+      {ALBUM_CARDS.map(card => (
+        <div
+          key={card.id}
+          className={`album-card ${card.float === 'a' ? 'float-a' : 'float-b'}`}
+          style={{
+            width: card.w, height: card.w,
+            top: card.top, left: card.left,
+            '--rot': `${card.rot}deg`,
+            transform: `rotate(${card.rot}deg)`,
+            filter: card.blur ? `blur(${card.blur}px)` : 'none',
+            opacity: card.opacity,
+          }}
+        >
+          <img
+            src={card.src}
+            alt=""
+            loading="lazy"
+            onError={e => { e.target.style.display = 'none'; e.target.parentElement.style.background = '#EDE8DE'; }}
+          />
+        </div>
+      ))}
+    </>
+  );
+}
+
+// ── Universal Logo (FIX 3) ─────────────────────────────────────────────────
+function KaraLogo({ onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        background: 'none', border: 'none', cursor: 'pointer',
+        fontFamily: "'Playfair Display', Georgia, serif",
+        fontWeight: 800, fontSize: 22,
+        color: 'var(--text-primary)',
+        letterSpacing: '-0.03em',
+        display: 'flex', alignItems: 'center', gap: 2,
+        padding: 0,
+        userSelect: 'none',
+      }}
+      aria-label="Go to homepage"
+    >
+      kara<span style={{ color: 'var(--star)', fontSize: 14, verticalAlign: 'super', marginLeft: 1 }}>✦</span>
+    </button>
+  );
+}
+
+// ── Navigation bars ────────────────────────────────────────────────────────
+function HeroNav({ isMicActive, setIsMicActive }) {
+  return (
+    <nav className="kara-nav">
+      {/* FIX 3: logo navigates to hero (already on hero, no-op or just scroll top) */}
+      <KaraLogo onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} />
+
+      <div className="nav-search">
+        <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input type="text" placeholder="Search songs, artists, albums…" aria-label="Search" />
+      </div>
+
+      <div className="nav-auth">
+        <button
+          onClick={() => setIsMicActive(!isMicActive)}
+          className={isMicActive ? 'btn-signup' : 'btn-login'}
+          style={isMicActive ? { background: '#1D9E75' } : {}}
+        >
+          {isMicActive ? '🎙 Mic on' : 'Enable Mic'}
+        </button>
+        <button className="btn-login">Log in</button>
+        <button className="btn-signup">Sign up</button>
+      </div>
+    </nav>
+  );
+}
+
+function StudioNav({ isMicActive, setIsMicActive, onHome }) {
+  return (
+    <nav className="kara-nav">
+      {/* FIX 3: logo navigates home */}
+      <KaraLogo onClick={onHome} />
+
+      <div className="nav-auth">
+        <button
+          onClick={() => setIsMicActive(!isMicActive)}
+          className={isMicActive ? 'btn-signup' : 'btn-login'}
+          style={isMicActive ? { background: '#1D9E75' } : {}}
+        >
+          {isMicActive ? '🎙 Mic on' : 'Enable Mic'}
+        </button>
+      </div>
+    </nav>
+  );
+}
+
+// FIX 1 & FIX 3: Player nav always shows logo + "Try another song"
+function PlayerNav({ song, artist, onExit, accuracyScore }) {
+  const albumArt = useAppStore(state => state.albumArt);
+
+  return (
+    <nav
+      className="kara-nav"
+      style={{ borderBottom: '0.5px solid var(--border-light)', background: 'var(--bg)' }}
+    >
+      {/* FIX 3 + FIX 1: logo click exits player */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+        <KaraLogo onClick={onExit} />
+
+        {/* Song info */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {albumArt && (
+            <img src={albumArt} alt="" style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover' }} />
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: 16, fontFamily: "'Playfair Display', serif", fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+              {song}
+            </span>
+            {artist && (
+              <span style={{ fontSize: 13, color: 'var(--text-muted)', fontFamily: 'Inter, sans-serif', lineHeight: 1.2 }}>
+                {artist}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Right side */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {/* Accuracy chip */}
+        {accuracyScore !== null && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            background: 'var(--surface)', border: '0.5px solid var(--border)',
+            borderRadius: 'var(--radius-pill)', padding: '6px 16px',
+          }}>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'Inter, sans-serif' }}>Accuracy</span>
+            <span style={{
+              fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif',
+              color: accuracyScore >= 80 ? '#1D9E75' : accuracyScore >= 50 ? '#D4A017' : '#D85A30',
+            }}>
+              {accuracyScore}%
+            </span>
+          </div>
+        )}
+
+        {/* FIX 1: "Try another song" pill */}
+        <button
+          id="try-another-song"
+          onClick={onExit}
+          style={{
+            padding: '9px 20px',
+            borderRadius: 'var(--radius-pill)',
+            border: '1px solid var(--text-primary)',
+            background: 'transparent',
+            color: 'var(--text-primary)',
+            fontSize: 13,
+            fontFamily: 'Inter, sans-serif',
+            fontWeight: 500,
+            cursor: 'pointer',
+            transition: 'background 0.2s',
+            whiteSpace: 'nowrap',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+        >
+          Try another song
+        </button>
+      </div>
+    </nav>
+  );
+}
+
+// ── Hero page ──────────────────────────────────────────────────────────────
+function HeroSection({ onGetStarted, isMicActive, setIsMicActive }) {
+  return (
+    <>
+      <HeroNav isMicActive={isMicActive} setIsMicActive={setIsMicActive} />
+      <section className="kara-hero" aria-label="Hero">
+        <AlbumScatter />
+        <div className="hero-center fade-in-up">
+          <div className="hero-badge fade-in-up fade-in-up-d1">
+            <span className="badge-star">✦</span>
+            Sing. Feel. Express.
+          </div>
+          <h1 className="hero-title fade-in-up fade-in-up-d2">
+            Your stage.<br/>Your song.
+          </h1>
+          <p className="hero-sub fade-in-up fade-in-up-d3">
+            Karaoke your favorites.<br />Anytime, anywhere.
+          </p>
+          <button id="hero-cta" className="btn-cta fade-in-up fade-in-up-d4" onClick={onGetStarted}>
+            Get Started
+            <span style={{ fontSize: 18, lineHeight: 1 }}>→</span>
+          </button>
+          <div className="hero-features fade-in-up fade-in-up-d5">
+            <div className="feature-pill">
+              <div className="feature-icon-wrap">
+                <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                  <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+                </svg>
+              </div>
+              <span className="feature-label">Trending Songs</span>
+            </div>
+            <div className="feature-pill">
+              <div className="feature-icon-wrap">
+                <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/><circle cx="12" cy="12" r="4"/>
+                </svg>
+              </div>
+              <span className="feature-label">Ai Pitch Guide</span>
+            </div>
+            <div className="feature-pill">
+              <div className="feature-icon-wrap">
+                <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
+              </div>
+              <span className="feature-label">Real-time Score</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </>
+  );
+}
+
+// ── Studio page ────────────────────────────────────────────────────────────
+function StudioSection({ error, originalLyrics, romanizedLyrics, languageMode, setLanguageMode, isMicActive, setIsMicActive, onHome }) {
+  return (
+    <>
+      <StudioNav isMicActive={isMicActive} setIsMicActive={setIsMicActive} onHome={onHome} />
+      <div style={{
+        minHeight: '100vh', paddingTop: '90px', paddingBottom: '60px',
+        background: 'var(--bg)', display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: 32,
+      }}>
+        <div className="hero-center fade-in-up" style={{ maxWidth: 660, width: '100%', padding: '0 20px' }}>
+          <div className="hero-badge">
+            <span className="badge-star">✦</span>
+            Pitch Studio
+          </div>
+          <h2 className="hero-title" style={{ fontSize: 'clamp(36px, 5vw, 52px)' }}>
+            Find your melody.
+          </h2>
+          <p className="hero-sub" style={{ fontSize: 14 }}>
+            Search a song, upload audio, and watch your pitch come alive.
+          </p>
+        </div>
+
+        <div className="kara-studio-panel fade-in-up fade-in-up-d2">
+          <SearchBar />
+
+          {error && (
+            <div className="kara-error" style={{ marginTop: 16 }}>{error}</div>
+          )}
+
+          {originalLyrics?.length > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 20 }}>
+              <div className="lang-toggle">
+                <button
+                  className={`lang-btn${languageMode === 'original' ? ' active' : ''}`}
+                  onClick={() => setLanguageMode('original')}
+                >
+                  Original
+                </button>
+                <button
+                  className={`lang-btn${languageMode === 'romanized' ? ' active' : ''}`}
+                  onClick={() => setLanguageMode('romanized')}
+                  disabled={!romanizedLyrics?.length}
+                  style={!romanizedLyrics?.length ? { opacity: 0.4 } : {}}
+                >
+                  Romanized
+                </button>
+              </div>
+            </div>
+          )}
+
+          <AudioUploader />
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── App root ───────────────────────────────────────────────────────────────
+function App() {
+  const error        = useAppStore(state => state.error);
+  const song         = useAppStore(state => state.song);
+  const artist       = useAppStore(state => state.artist);
+  const originalLyrics   = useAppStore(state => state.originalLyrics);
+  const romanizedLyrics  = useAppStore(state => state.romanizedLyrics);
+  const languageMode     = useAppStore(state => state.languageMode);
+  const setLanguageMode  = useAppStore(state => state.setLanguageMode);
+  const isMicActive      = useAppStore(state => state.isMicActive);
+  const setIsMicActive   = useAppStore(state => state.setIsMicActive);
+  const accuracyScore    = useAppStore(state => state.accuracyScore);
+  const showPlayer       = useAppStore(state => state.showPlayer);   // FIX 2
+  const isAnalyzing      = useAppStore(state => state.isAnalyzing);
+
+  const [showStudio, setShowStudio] = React.useState(false);
+
+  // Audio controls needed for exitPlayer (FIX 1)
+  const { stop } = useAudioControls();
+
+  useMicPitch();
+
+  // FIX 1 — exitPlayer: stop audio, abort fetch, clear state, go home
+  const exitPlayer = React.useCallback(() => {
+    // 1. Stop Web Audio immediately
+    stop();
+
+    // 2. Cancel any in-progress analysis fetch
+    const abortFn = window.__karaAbortAnalysis;
+    if (typeof abortFn === 'function') {
+      abortFn();
+      window.__karaAbortAnalysis = null;
+    }
+
+    // 3. Clear all song/player state
+    useAppStore.setState({
+      alignedLyrics: [],
+      isPlaying: false,
+      audioBuffer: null,
+      isAnalyzing: false,
+      showPlayer: false,
+      analysisStep: '',
+      currentTime: 0,
+      albumArt: null,
+      syncOffsetMs: 0,
+    });
+
+    // 4. Navigate to homepage
+    setShowStudio(false);
+  }, [stop]);
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  if (showPlayer) {
+    if (isAnalyzing) {
+      return <AnalysisLoadingScreen onCancel={exitPlayer} />;
+    }
+
+    // FIX 2: Stage/player view — shown immediately when analysis starts
+    return (
+      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
+        {/* FIX 1 & FIX 3: Player nav with clickable logo + Try another song */}
+        <PlayerNav
+          song={song}
+          artist={artist}
+          onExit={exitPlayer}
+          accuracyScore={accuracyScore}
+        />
+
+        {/* Canvas */}
+        <div style={{ flex: 1, minHeight: 0, padding: '8px 24px 120px', marginTop: 72 }}>
+          <PitchCanvas />
+        </div>
+
+        {/* Player bar */}
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50 }}>
+          <PlaybackControls />
+        </div>
+      </div>
+    );
+  }
+
+  if (showStudio) {
+    return (
+      <StudioSection
+        error={error}
+        originalLyrics={originalLyrics}
+        romanizedLyrics={romanizedLyrics}
+        languageMode={languageMode}
+        setLanguageMode={setLanguageMode}
+        isMicActive={isMicActive}
+        setIsMicActive={setIsMicActive}
+        onHome={() => setShowStudio(false)}   // FIX 3: studio logo → home
+      />
+    );
+  }
+
+  return (
+    <HeroSection
+      onGetStarted={() => setShowStudio(true)}
+      isMicActive={isMicActive}
+      setIsMicActive={setIsMicActive}
+    />
+  );
+}
+
+export default App;

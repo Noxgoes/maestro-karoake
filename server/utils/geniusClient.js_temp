@@ -1,0 +1,55 @@
+function parseToWordArray(rawLyrics) {
+  if (!rawLyrics) return [];
+
+  const cleaned = rawLyrics
+    .replace(/\[.*?\]/g, '')       // [Chorus], etc.
+    .replace(/\(.*?\)/g, '')       // (Hook), etc.
+    .replace(/[""'']/g, '"\'')    // normalize fancy quotes
+    .replace(/\r/g, '');           // Windows line endings
+
+  const lines = cleaned.split('\n').filter(line => {
+    const l = line.trim().toLowerCase();
+    if (l.length === 0) return false;
+    
+    // Filter out common Genius metadata lines
+    const junkPatterns = [
+      /^contributors/i,
+      /^translations/i,
+      /^\d+$/, 
+      /^you might also like/i,
+      /^[a-z]+\slyrics$/i,
+      /^lyrics originally titled/i
+    ];
+    return !junkPatterns.some(pattern => pattern.test(l));
+  });
+
+  const words = [];
+  let wordIndex = 0;
+
+  lines.forEach((line, lineIndex) => {
+    const rawWords = line.trim().split(/\s+/);
+    const lineWords = [];
+    
+    for (let i = 0; i < rawWords.length; i++) {
+      let w = rawWords[i].trim();
+      if (!w) continue;
+
+      const junkTokens = ['CONTRIBUTORS', 'TRANSLATIONS', 'LYRICS', 'TITLED', 'ORIGINALLY'];
+      if (junkTokens.includes(w.toUpperCase())) continue;
+      if (!/[a-zA-Z\u00C0-\u024F\u0900-\u097F\u3040-\u30FF\u4E00-\u9FFF]/.test(w)) continue;
+
+      // ── SMART MERGE ──
+      // If this "word" is just a single consonant (like 'k', 'b', 't') 
+      // and there's another word following it in the same line, merge them.
+      if (w.length === 1 && /^[bcdfghjklmnpqrstvwxyz]$/i.test(w) && i < rawWords.length - 1) {
+        rawWords[i + 1] = w + rawWords[i + 1];
+        continue;
+      }
+      
+      lineWords.push({ word: w, lineIndex, wordIndex: wordIndex++ });
+    }
+    words.push(...lineWords);
+  });
+
+  return words;
+}

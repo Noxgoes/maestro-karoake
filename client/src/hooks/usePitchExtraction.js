@@ -1,0 +1,204 @@
+import { useState } from 'react';
+import { useAppStore } from '../store/appStore';
+import { alignLyrics, parseLrc, alignLyricsToLrc } from '../utils/alignUtils';
+
+export function usePitchExtraction() {
+  const [progress, setProgress] = useState(0);
+  const setAlignedLyrics = useAppStore(state => state.setAlignedLyrics);
+  const setIsAnalyzing = useAppStore(state => state.setIsAnalyzing);
+
+  const extractPitch = async (audioBuffer) => {
+    setIsAnalyzing(true);
+    setProgress(0);
+
+    try {
+      // ── Step 1: Downmix to mono ──────────────────────────────────────────
+      let mono;
+      if (audioBuffer.numberOfChannels > 1) {
+        const left = audioBuffer.getChannelData(0);
+        const right = audioBuffer.getChannelData(1);
+        mono = new Float32Array(left.length);
+        for (let i = 0; i < left.length; i++) mono[i] = (left[i] + right[i]) / 2;
+      } else {
+        mono = audioBuffer.getChannelData(0);
+      }
+
+      // ── Step 2: Pitch Detection (Basic Pitch) ────────────────────────────
+      // For Phase 1 we use a simple pitch detection fallback if Basic Pitch isn't ready
+      // or we can use the Spotify library if it's correctly linked.
+      // For now, let's assume we have notes from a pitch detection process.
+      // Using a simplified mock pitch extractor for dev if BasicPitch is missing:
+      const sampleRate = audioBuffer.sampleRate;
+      const notes = await mockPitchDetect(mono, sampleRate);
+
+      // ── Step 3: Metadata Fetch (Backup) ──────────────────────────────────
+      const { song, artist, syncedLyrics: storedSynced, originalLyrics, romanizedLyrics, useRomanized } = useAppStore.getState();
+      let syncedLyrics = storedSynced;
+
+      if (!syncedLyrics && song) {
+        try {
+          let finalArtist = artist || '';
+          let finalSong = song || '';
+          const arijitInSong = finalSong.toLowerCase().includes('arijit') || finalSong.toLowerCase().includes('singh');
+          const kesariyaInArtist = finalArtist.toLowerCase().includes('kesariya');
+          if (arijitInSong && kesariyaInArtist) {
+            const temp = finalArtist; finalArtist = finalSong; finalSong = temp;
+          }
+          const targetDuration = Math.floor(audioBuffer.duration);
+          let resData = null;
+
+          // Attempt direct GET if artist exists
+          if (finalArtist) {
+            try {
+              const params = new URLSearchParams({ artist_name: finalArtist, track_name: finalSong, duration: targetDuration.toString() });
+              const res = await fetch(`https://lrclib.net/api/get?${params}`);
+              if (res.ok) resData = await res.json();
+            } catch (e) {}
+          }
+
+          // If no result yet, try broad SEARCH (great for missing artists)
+          if (!resData || !resData.syncedLyrics) {
+            console.log(`[PitchExtraction] Direct GET failed/skipped. Trying broad search for: ${finalSong}`);
+            const searchRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(finalSong)}`);
+            if (searchRes.ok) {
+              const results = await searchRes.json();
+              const bestMatch = results
+                .filter(r => r.syncedLyrics)
+                .sort((a, b) => Math.abs(a.duration - targetDuration) - Math.abs(b.duration - targetDuration))[0];
+              
+              if (bestMatch) {
+                console.log(`[PitchExtraction] Found match via search duration: ${bestMatch.artistName} - ${bestMatch.trackName}`);
+                resData = bestMatch;
+              }
+            }
+          }
+
+          if (resData && resData.syncedLyrics) {
+            syncedLyrics = resData.syncedLyrics;
+          }
+        } catch (e) { console.warn('[PitchExtraction] Backup LRC fetch failed:', e.message); }
+      }
+
+      const lrcLines = syncedLyrics ? parseLrc(syncedLyrics) : null;
+
+      // ── Step 4: ALIGNMENT ──────────────────────────────────────────────
+      // Align Original
+      const alignedOriginal = lrcLines 
+        ? alignLyricsToLrc(originalLyrics, lrcLines, notes)
+        : alignLyrics(originalLyrics, notes, audioBuffer.duration);
+
+      // Align Romanized
+      let alignedRomanized = [];
+      if (romanizedLyrics && romanizedLyrics.length > 0) {
+        alignedRomanized = lrcLines
+          ? alignLyricsToLrc(romanizedLyrics, lrcLines, notes)
+          : alignLyrics(romanizedLyrics, notes, audioBuffer.duration);
+      }
+
+      // ── Step 5: COMMIT ──────────────────────────────────────────────────
+      useAppStore.setState({
+        alignedOriginal,
+        alignedRomanized,
+        alignedLyrics: (useRomanized && alignedRomanized.length > 0) ? alignedRomanized : alignedOriginal,
+        isAnalyzing: false,
+        analysisStep: 'complete'
+      });
+
+    } catch (err) {
+      console.error('[PitchExtraction] Error:', err);
+      useAppStore.setState({ isAnalyzing: false, error: err.message });
+    }
+  };
+
+  return { extractPitch, progress };
+}
+
+async function mockPitchDetect(fullMono, fullSampleRate) {
+  // ── 1. Downsample for speed (11025Hz is plenty for vocals) ──
+  const targetRate = 11025;
+  const ratio = Math.floor(fullSampleRate / targetRate);
+  const mono = new Float32Array(Math.floor(fullMono.length / ratio));
+  for (let i = 0; i < mono.length; i++) mono[i] = fullMono[i * ratio];
+  const sampleRate = fullSampleRate / ratio;
+
+  const notes = [];
+  const frameSize = 512; // Smaller frame for lower sample rate
+  const step = 512;      // Jump more aggressively
+  const minDurationMs = 150;
+  
+  let current = null;
+  const commitNote = (c, d) => ({
+    startTimeSeconds: c.startTimeSeconds,
+    durationSeconds: d,
+    pitchHz: c.pitchHz,
+    pitchMidi: c.pitchMidi,
+    amplitude: 0.8
+  });
+
+  for (let i = 0; i < mono.length - frameSize; i += step) {
+    const frame = mono.slice(i, i + frameSize);
+    
+    // Fast peak check
+    let maxVal = 0;
+    for (let j = 0; j < frame.length; j++) if (Math.abs(frame[j]) > maxVal) maxVal = Math.abs(frame[j]);
+    if (maxVal < 0.05) {
+      if (current) {
+        const dur = (i / sampleRate) - current.startTimeSeconds;
+        if (dur * 1000 >= minDurationMs) notes.push(commitNote(current, dur));
+        current = null;
+      }
+      continue;
+    }
+
+    const pitch = autoCorrelate(frame, sampleRate);
+    if (pitch > 0) {
+      const midi = hzToMidi(pitch);
+      const time = i / sampleRate;
+      if (!current) {
+        current = { startTimeSeconds: time, pitchHz: pitch, pitchMidi: midi, samples: 1, midiSum: midi };
+      } else {
+        if (Math.abs(midi - Math.round(current.midiSum / current.samples)) <= 2) {
+          current.samples++;
+          current.midiSum += midi;
+        } else {
+          const dur = time - current.startTimeSeconds;
+          if (dur * 1000 >= minDurationMs) notes.push(commitNote(current, dur));
+          current = { startTimeSeconds: time, pitchHz: pitch, pitchMidi: midi, samples: 1, midiSum: midi };
+        }
+      }
+    } else if (current) {
+      const dur = (i / sampleRate) - current.startTimeSeconds;
+      if (dur * 1000 >= minDurationMs) notes.push(commitNote(current, dur));
+      current = null;
+    }
+  }
+  return notes;
+}
+
+function autoCorrelate(buffer, sampleRate) {
+  const SIZE = buffer.length;
+  // Human pitch range: 50Hz (220 samples at 11kHz) to 1000Hz (11 samples)
+  let minOffset = Math.max(2, Math.floor(sampleRate / 1000));
+  let maxOffset = Math.min(SIZE - 1, Math.floor(sampleRate / 50));
+  
+  let bestOffset = -1;
+  let bestCorrelation = -1;
+
+  for (let i = minOffset; i <= maxOffset; i++) {
+    let correlation = 0;
+    for (let j = 0; j < SIZE - i; j++) {
+      correlation += buffer[j] * buffer[j + i];
+    }
+    if (correlation > bestCorrelation) {
+      bestCorrelation = correlation;
+      bestOffset = i;
+    }
+  }
+
+  if (bestOffset === -1 || bestCorrelation < 0.1) return -1;
+  return sampleRate / bestOffset;
+}
+
+function hzToMidi(hz) {
+  return Math.round(12 * Math.log2(hz / 440) + 69);
+}
