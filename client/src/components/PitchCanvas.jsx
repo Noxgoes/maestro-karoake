@@ -63,19 +63,19 @@ export default function PitchCanvas() {
   // The RAF loop — runs every frame, computes fresh time, sets state
   useEffect(() => {
     const tick = () => {
-      if (isPlayingRef.current) {
-        const ctx = getAudioContext();
-        const elapsed = startCtxTime.current > 0
-          ? (ctx.currentTime - startCtxTime.current) * playbackRateRef.current
-          : 0;
-        const songSec = pauseOffset.current + elapsed;
-        setCurrentMs(Math.max(0, songSec * 1000) + syncOffsetMs);
-      }
+      const ctx = getAudioContext();
+      const elapsed = (isPlayingRef.current && startCtxTime.current > 0)
+        ? (ctx.currentTime - startCtxTime.current) * playbackRateRef.current
+        : 0;
+      
+      const songSec = pauseOffset.current + elapsed;
+      setCurrentMs(Math.max(0, songSec * 1000) + syncOffsetMs);
+      
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-  }, [syncOffsetMs]); // re-run only when syncOffset changes (rare)
+  }, [syncOffsetMs]); // Re-run ensures instant snap on sync change
 
   const MIN_WORD_SPACING = 160;
   const rowHeight = 320; 
