@@ -44,6 +44,7 @@ export default function AudioUploader() {
   // ── YouTube Metadata Auto-fetch ──
   useEffect(() => {
     if (ytUrl && ytUrl.includes('youtube.com') || ytUrl.includes('youtu.be')) {
+      const fetchYtInfo = async () => {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
         try {
           const res = await fetch(`${apiUrl}/api/audio/info?url=${encodeURIComponent(ytUrl)}`);
