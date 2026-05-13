@@ -10,10 +10,17 @@ const router = express.Router();
 
 let ytDlpWrap = null;
 const initYtDlp = async () => {
-  const binaryPath = path.join(__dirname, '..', 'yt-dlp.exe');
+  const isWin = process.platform === 'win32';
+  const binaryName = isWin ? 'yt-dlp.exe' : 'yt-dlp';
+  const binaryPath = path.join(__dirname, '..', binaryName);
+  
   if (!fs.existsSync(binaryPath)) {
-    console.log('Downloading yt-dlp binary...');
+    console.log(`Downloading ${binaryName} binary...`);
     await YTDlpWrap.default.downloadFromGithub(binaryPath);
+    // On Linux/Mac, we must ensure the binary is executable
+    if (!isWin) {
+      fs.chmodSync(binaryPath, '755');
+    }
   }
   ytDlpWrap = new YTDlpWrap.default(binaryPath);
 };
