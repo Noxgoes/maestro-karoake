@@ -20,9 +20,12 @@ const initYtDlp = async () => {
     
     console.log(`[YT-DLP] Target path: ${binaryPath}`);
     
+    // Handle both ESM and CJS import styles
+    const Downloader = YTDlpWrap.default || YTDlpWrap;
+    
     if (!fs.existsSync(binaryPath)) {
       console.log(`[YT-DLP] Downloading ${binaryName} binary...`);
-      await YTDlpWrap.default.downloadFromGithub(binaryPath);
+      await Downloader.downloadFromGithub(binaryPath);
       if (!isWin) {
         fs.chmodSync(binaryPath, '755');
       }
@@ -31,12 +34,11 @@ const initYtDlp = async () => {
       console.log(`[YT-DLP] Binary already exists.`);
     }
     
-    ytDlpWrap = new YTDlpWrap.default(binaryPath);
+    ytDlpWrap = new Downloader(binaryPath);
     console.log(`[YT-DLP] Initialization successful.`);
   } catch (err) {
-    console.error(`[YT-DLP ERROR] Failed to initialize:`, err.message);
-    // Don't crash the whole server, just log the error. 
-    // The /api/audio/extract route will handle it if ytDlpWrap is null.
+    console.error(`[YT-DLP ERROR] Failed to initialize:`, err);
+    // Don't crash the whole server
   }
 };
 
