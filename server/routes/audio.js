@@ -10,19 +10,34 @@ const router = express.Router();
 
 let ytDlpWrap = null;
 const initYtDlp = async () => {
-  const isWin = process.platform === 'win32';
-  const binaryName = isWin ? 'yt-dlp.exe' : 'yt-dlp';
-  const binaryPath = path.join(__dirname, '..', binaryName);
-  
-  if (!fs.existsSync(binaryPath)) {
-    console.log(`Downloading ${binaryName} binary...`);
-    await YTDlpWrap.default.downloadFromGithub(binaryPath);
-    // On Linux/Mac, we must ensure the binary is executable
-    if (!isWin) {
-      fs.chmodSync(binaryPath, '755');
+  try {
+    const isWin = process.platform === 'win32';
+    const binaryName = isWin ? 'yt-dlp.exe' : 'yt-dlp';
+    
+    // On Render/Linux, we use /tmp to avoid permission issues
+    const baseDir = isWin ? path.join(__dirname, '..') : '/tmp';
+    const binaryPath = path.join(baseDir, binaryName);
+    
+    console.log(`[YT-DLP] Target path: ${binaryPath}`);
+    
+    if (!fs.existsSync(binaryPath)) {
+      console.log(`[YT-DLP] Downloading ${binaryName} binary...`);
+      await YTDlpWrap.default.downloadFromGithub(binaryPath);
+      if (!isWin) {
+        fs.chmodSync(binaryPath, '755');
+      }
+      console.log(`[YT-DLP] Download complete.`);
+    } else {
+      console.log(`[YT-DLP] Binary already exists.`);
     }
+    
+    ytDlpWrap = new YTDlpWrap.default(binaryPath);
+    console.log(`[YT-DLP] Initialization successful.`);
+  } catch (err) {
+    console.error(`[YT-DLP ERROR] Failed to initialize:`, err.message);
+    // Don't crash the whole server, just log the error. 
+    // The /api/audio/extract route will handle it if ytDlpWrap is null.
   }
-  ytDlpWrap = new YTDlpWrap.default(binaryPath);
 };
 
 initYtDlp();
