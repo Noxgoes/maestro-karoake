@@ -68,81 +68,23 @@ export function addPitchToLyrics(words, pitchNotes) {
 // ---------------------------------------------------------------------------
 // alignLyrics — Syllable-math estimation fallback
 // ---------------------------------------------------------------------------
+// alignLyrics — aligns Genius lyrics to detected pitch notes (naive fallback)
+// ---------------------------------------------------------------------------
 export function alignLyrics(lyrics, pitchNotes, audioDurationSecs) {
+  const songDurationMs = (audioDurationSecs || 180) * 1000;
+  const sortedNotes = [...pitchNotes].sort((a, b) => a.startTimeSeconds - b.startTimeSeconds);
+  const aligned = [];
+
   const lineMap = {};
   lyrics.forEach(w => {
     if (!lineMap[w.lineIndex]) lineMap[w.lineIndex] = [];
     lineMap[w.lineIndex].push(w);
   });
-  const lineKeys = Object.keys(lineMap).sort((a, b) => Number(a) - Number(b));
-
-  if (!lineKeys.length) return lyrics;
-
-  const audioDurationMs = (audioDurationSecs || 180) * 1000;
-  const sortedNotes = [...pitchNotes].sort((a, b) => a.startTimeSeconds - b.startTimeSeconds);
-  const confidentNotes = sortedNotes.filter(n => n.amplitude > 0.45);
-
-  let songStartMs = sortedNotes.length > 0 ? sortedNotes[0].startTimeSeconds * 1000 : audioDurationMs * 0.05;
-  let songEndMs = sortedNotes.length > 0 ? (sortedNotes[sortedNotes.length - 1].startTimeSeconds + sortedNotes[sortedNotes.length - 1].durationSeconds) * 1000 : audioDurationMs * 0.95;
-
-  if (confidentNotes.length > 0) {
-    const firstMs = confidentNotes[0].startTimeSeconds * 1000;
-    const lastMs  = (confidentNotes[confidentNotes.length - 1].startTimeSeconds + confidentNotes[confidentNotes.length - 1].durationSeconds) * 1000;
-    songStartMs = firstMs < 2000 ? Math.max(firstMs, 3000) : firstMs;
-    songEndMs   = lastMs;
-  }
-
-  if (songEndMs - songStartMs < 5000) {
-    songStartMs = audioDurationMs * 0.03;
-    songEndMs   = audioDurationMs * 0.97;
-  }
-
-  const totalSyllables = lineKeys.reduce((s, lk) => s + lineMap[lk].reduce((ss, w) => ss + Math.max(1, syllable(w.word)), 0), 0);
-  const spanMs = songEndMs - songStartMs;
-  const msPerSyllable = Math.max(200, Math.min(800, spanMs / Math.max(1, totalSyllables)));
-
-  const aligned = [];
-  let cursorMs = songStartMs;
-
-  lineKeys.forEach(lk => {
-    const words    = lineMap[lk];
-    const lineSyls = words.reduce((s, w) => s + Math.max(1, syllable(w.word)), 0);
-    const lineDurMs = lineSyls * msPerSyllable;
-
-    const nearbyNotes = sortedNotes.filter(n => {
-      const ns = n.startTimeSeconds * 1000;
-      return ns >= cursorMs && ns <= cursorMs + 5000;
-    });
-    const words = lineMap[lk];
-
-    words.forEach(w => {
-      const syls    = Math.max(1, syllable(w.word));
-      const wordDur = syls * timePerSyl;
-      aligned.push({
-        ...w,
-        startMs:  wordCursor,
-        endMs:    wordCursor + wordDur,
-        midiNote: getMidiAtTime(sortedNotes, wordCursor + wordDur / 2, 0.12),
-      });
-      wordCursor += wordDur;
-    });
-  });
-
-  return aligned;
-}
-
-export function alignLyricsNaive(geniusLyrics, pitchNotes, songDurationMs) {
-  const sortedNotes = [...pitchNotes].sort((a, b) => a.startTimeSeconds - b.startTimeSeconds);
-  const aligned = [];
-
-  const lineMap = {};
-  geniusLyrics.forEach(w => {
-    if (!lineMap[w.lineIndex]) lineMap[w.lineIndex] = [];
-    lineMap[w.lineIndex].push(w);
-  });
 
   const lineKeys = Object.keys(lineMap).sort((a, b) => Number(a) - Number(b));
-  const totalSyllables = geniusLyrics.reduce((acc, w) => acc + Math.max(1, syllable(w.word)), 0);
+  const totalSyllables = lyrics.reduce((acc, w) => acc + Math.max(1, syllable(w.word)), 0);
+
+  if (totalSyllables === 0) return lyrics;
 
   // ── SMARTER START: Detect first vocal to avoid intro drift ──
   const firstVoiced = sortedNotes.find(n => n.amplitude > 0.1);

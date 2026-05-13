@@ -86,8 +86,8 @@ async function scrapeLyricsPage(url) {
 
     return result;
   } catch (error) {
-    console.error(`Failed to scrape lyrics from ${url}:`, error.message);
-    throw new Error('Failed to scrape lyrics page');
+    console.error(`[Scraper] Blocked or failed for ${url}:`, error.message);
+    return null; // Return null so the fallback system can take over
   }
 }
 
@@ -166,7 +166,8 @@ function isAlreadyRomanScript(text) {
 export async function fetchLyrics(song, artist) {
   // Always fetch original first to check script
   let originalResult = await searchGenius(`${song} ${artist}`);
-  const originalRaw = originalResult ? await scrapeLyricsPage(originalResult.url) : '';
+  const originalRaw = originalResult ? await scrapeLyricsPage(originalResult.url) : null;
+  if (!originalRaw) throw new Error('Genius scraping blocked or failed');
   
   const officialArtist = originalResult?.primary_artist?.name || artist;
   const officialTitle = originalResult?.title || song;
