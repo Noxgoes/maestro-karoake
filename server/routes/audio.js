@@ -77,30 +77,36 @@ router.post('/extract', async (req, res) => {
 
     console.log(`Extracting audio from ${url}`);
     
-    // Create a temporary file path
-    const tempFilePath = path.join(__dirname, '..', `temp-${Date.now()}.mp3`);
+    // Create a temporary file path with a generic extension first
+    const fileId = Date.now();
+    const tempPattern = path.join(__dirname, '..', `temp-${fileId}.%(ext)s`);
     
-    // Download as native m4a (fastest, no conversion needed)
+    console.log(`[YT-DLP] Starting extraction for: ${url}`);
+    
+    // Download best available audio natively (fastest)
     await ytDlpWrap.execPromise([
       url,
       '-x', 
-      '--audio-format', 'm4a',
-      '--audio-quality', '128K', // sufficient for analysis and fast
+      '--audio-quality', '0', // Best quality available natively
       '--no-playlist',
-      '-o', tempFilePath.replace('.mp3', '.m4a')
+      '-o', tempPattern
     ]);
     
-    const finalPath = tempFilePath.replace('.mp3', '.m4a');
+    // Find what file was actually created (could be .m4a, .webm, .opus etc)
+    const files = fs.readdirSync(path.join(__dirname, '..'));
+    const finalFile = files.find(f => f.startsWith(`temp-${fileId}`));
+    
+    if (!finalFile) {
+      throw new Error('yt-dlp completed but no file was found');
+    }
+
+    const finalPath = path.join(__dirname, '..', finalFile);
+    console.log(`[YT-DLP] Success! Created: ${finalFile}`);
     
     // Send file and clean up
-    res.download(finalPath, 'audio.m4a', (err) => {
-      if (err) {
-        console.error('Error sending file:', err);
-      }
-      // Clean up temp file
-      if (fs.existsSync(finalPath)) {
-        fs.unlinkSync(finalPath);
-      }
+    res.download(finalPath, 'audio.media', (err) => {
+      if (err) console.error('[DOWNLOAD ERROR]', err);
+      if (fs.existsSync(finalPath)) fs.unlinkSync(finalPath);
     });
     
   } catch (error) {
