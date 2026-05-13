@@ -80,22 +80,26 @@ router.post('/extract', async (req, res) => {
     // Create a temporary file path
     const tempFilePath = path.join(__dirname, '..', `temp-${Date.now()}.mp3`);
     
-    // Download as mp3
+    // Download as native m4a (fastest, no conversion needed)
     await ytDlpWrap.execPromise([
       url,
       '-x', 
-      '--audio-format', 'mp3',
-      '-o', tempFilePath
+      '--audio-format', 'm4a',
+      '--audio-quality', '128K', // sufficient for analysis and fast
+      '--no-playlist',
+      '-o', tempFilePath.replace('.mp3', '.m4a')
     ]);
     
+    const finalPath = tempFilePath.replace('.mp3', '.m4a');
+    
     // Send file and clean up
-    res.download(tempFilePath, 'audio.mp3', (err) => {
+    res.download(finalPath, 'audio.m4a', (err) => {
       if (err) {
         console.error('Error sending file:', err);
       }
       // Clean up temp file
-      if (fs.existsSync(tempFilePath)) {
-        fs.unlinkSync(tempFilePath);
+      if (fs.existsSync(finalPath)) {
+        fs.unlinkSync(finalPath);
       }
     });
     
