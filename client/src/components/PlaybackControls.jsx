@@ -161,6 +161,29 @@ export default function PlaybackControls() {
           ))}
         </div>
 
+        {/* Sync Offset */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          background: 'rgba(255,255,255,0.06)',
+          border: '0.5px solid rgba(255,255,255,0.1)',
+          borderRadius: 'var(--radius-pill)',
+          padding: '4px 10px',
+          marginLeft: 10,
+        }}>
+          <span style={{ fontSize: 10, color: '#6B6560', textTransform: 'uppercase', fontWeight: 600 }}>Sync</span>
+          <button 
+            onClick={() => setSyncOffsetMs(syncOffsetMs - 100)}
+            style={{ background: 'none', border: 'none', color: '#F5F0E8', cursor: 'pointer', padding: '0 4px', fontSize: 16 }}
+          >−</button>
+          <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#F5F0E8', minWidth: 35, textAlign: 'center' }}>
+            {syncOffsetMs > 0 ? '+' : ''}{(syncOffsetMs / 1000).toFixed(1)}s
+          </span>
+          <button 
+            onClick={() => setSyncOffsetMs(syncOffsetMs + 100)}
+            style={{ background: 'none', border: 'none', color: '#F5F0E8', cursor: 'pointer', padding: '0 4px', fontSize: 16 }}
+          >+</button>
+        </div>
+
         {/* ── Romanization Toggle ── */}
         {romanizedLyrics && romanizedLyrics.length > 0 && (
           <button
