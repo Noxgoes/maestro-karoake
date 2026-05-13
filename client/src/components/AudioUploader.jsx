@@ -339,7 +339,22 @@ export default function AudioUploader() {
           className="kara-input"
           style={{ paddingLeft: 38 }}
           value={ytUrl}
-          onChange={e => setYtUrl(e.target.value)}
+          onChange={async (e) => {
+            const val = e.target.value;
+            setYtUrl(val);
+            if (val.includes('youtube.com/') || val.includes('youtu.be/')) {
+              try {
+                const res = await fetch(`${apiUrl}/api/audio/info?url=${encodeURIComponent(val)}`);
+                if (res.ok) {
+                  const data = await res.json();
+                  if (data.track) setSong(data.track);
+                  if (data.artist) setArtist(data.artist);
+                }
+              } catch (err) {
+                console.warn('[AutoFill] Failed:', err);
+              }
+            }
+          }}
         />
       </div>
 

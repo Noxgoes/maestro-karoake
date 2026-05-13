@@ -51,16 +51,19 @@ router.get('/info', async (req, res) => {
     if (!ytDlpWrap) return res.status(503).json({ error: 'yt-dlp not initialized' });
 
     const metadata = await ytDlpWrap.getVideoInfo(url);
-    res.json({ 
+    res.json({
       title: metadata.title,
-      duration: metadata.duration 
+      uploader: metadata.uploader,
+      artist: metadata.artist || metadata.uploader, // fallback to uploader if official artist tag missing
+      track: metadata.track || metadata.title
     });
   } catch (error) {
-    console.error('Error fetching YT info:', error);
+    console.error('[YT-INFO ERROR]', error.message);
     res.status(500).json({ error: 'Failed to fetch video info' });
   }
 });
 
+// POST /api/audio/extract
 router.post('/extract', async (req, res) => {
   try {
     const { url } = req.body;

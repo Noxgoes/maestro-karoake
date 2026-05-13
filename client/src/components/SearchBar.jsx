@@ -62,7 +62,7 @@ export default function SearchBar() {
             <input
               id="search-song"
               type="text"
-              placeholder="Singer / Artist (e.g. Arijit Singh)"
+              placeholder="Song Title (e.g. Kesariya)"
               className="kara-input"
               style={{ paddingLeft: 38 }}
               value={song}
@@ -74,7 +74,7 @@ export default function SearchBar() {
           <input
             id="search-artist"
             type="text"
-            placeholder="Song Title (e.g. Kesariya)"
+            placeholder="Singer / Artist (e.g. Arijit Singh)"
             className="kara-input"
             style={{ flex: 1 }}
             value={artist}
