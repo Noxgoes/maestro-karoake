@@ -44,9 +44,9 @@ export default function AudioUploader() {
   // ── YouTube Metadata Auto-fetch ──
   useEffect(() => {
     if (ytUrl && ytUrl.includes('youtube.com') || ytUrl.includes('youtu.be')) {
-      const fetchYtInfo = async () => {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
         try {
-          const res = await fetch(`http://localhost:3001/api/audio/info?url=${encodeURIComponent(ytUrl)}`);
+          const res = await fetch(`${apiUrl}/api/audio/info?url=${encodeURIComponent(ytUrl)}`);
           if (res.ok) {
             const data = await res.json();
             // Use our smart filename-splitter on the YT title
@@ -63,8 +63,9 @@ export default function AudioUploader() {
   }, [ytUrl, setSong, setArtist]);
 
   const performLyricsFetch = async (currentSong, currentArtist, duration, signal) => {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
     setAnalysisStep('fetching-lyrics');
-    let url = `http://localhost:3001/api/lyrics?q=${encodeURIComponent(currentSong)}&artist=${encodeURIComponent(currentArtist || '')}`;
+    let url = `${apiUrl}/api/lyrics?q=${encodeURIComponent(currentSong)}&artist=${encodeURIComponent(currentArtist || '')}`;
     if (duration) url += `&duration=${Math.round(duration)}`;
     const response = await fetch(url, { signal });
     const data = await response.json();
@@ -125,8 +126,9 @@ export default function AudioUploader() {
 
       // 2. Fetch lyrics (with duration!) and metadata concurrently for speed
       setAnalysisStep('fetching-lyrics');
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
       const query = `${currentSong} ${currentArtist || ''}`.trim();
-      const metadataPromise = fetch(`http://localhost:3001/api/metadata?q=${encodeURIComponent(query)}`, { signal })
+      const metadataPromise = fetch(`${apiUrl}/api/metadata?q=${encodeURIComponent(query)}`, { signal })
         .then(res => res.json())
         .then(data => {
           if (data.results && data.results[0]) {
