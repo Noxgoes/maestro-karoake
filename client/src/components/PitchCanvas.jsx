@@ -23,6 +23,7 @@ export default function PitchCanvas() {
 
   // ── Read time directly from AudioContext via RAF ──
   const [currentMs, setCurrentMs] = useState(0);
+  const [manualLine, setManualLine] = useState(null); // NULL = auto, index = locked line
   const rafRef        = useRef(null);
   const startCtxTime  = useRef(0);   // ctx.currentTime when play() was called
   const pauseOffset   = useRef(0);   // song-seconds accumulated before this play segment
@@ -147,9 +148,13 @@ export default function PitchCanvas() {
   // During a gap between lines, highlight the LAST completed line (not the next one).
   // Old code: linesData.find(l => currentMs < l.endMs)  ← wrong: picks NEXT line early
   // New code: linesData.findLast(l => currentMs >= l.endMs) ← picks last seen line
-  const activeLine =
+  const autoLine =
     linesData.find(l => currentMs >= l.startMs && currentMs < l.endMs) ??
     (currentMs > 0 ? [...linesData].reverse().find(l => currentMs >= l.endMs) : null);
+
+  const activeLine = manualLine !== null 
+    ? (linesData.find(l => Number(l.lineIndex) === manualLine) || autoLine)
+    : autoLine;
 
   const totalHeight = Math.max(600, linesData.length * rowHeight + padding);
 
@@ -167,8 +172,11 @@ export default function PitchCanvas() {
     const lineCenterSvg = Number(activeLine.yOffset) + rowHeight / 2;
     const scrollTarget  = (lineCenterSvg * scale) - (viewportH / 2);
     
-    container.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' });
-  }, [activeLine?.lineIndex]);
+    container.scrollTo({ 
+      top: Math.max(0, scrollTarget), 
+      behavior: manualLine !== null ? 'instant' : 'smooth' // Snappier when manually clicking
+    });
+  }, [activeLine?.lineIndex, manualLine]);
 
   // ── Mic overlay helpers ───────────────────────────────────────────────────
   const getCoordinates = (timeMs, midi) => {
@@ -380,7 +388,11 @@ export default function PitchCanvas() {
                   <g
                     key={`word-${w.wordIndex}`}
                     transform={`translate(${w.x}, ${w.y}) rotate(${rotation})`}
-                    style={{ transition: 'all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
+                    style={{ 
+                      transition: 'all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                      cursor: 'pointer' 
+                    }}
+                    onClick={() => setManualLine(Number(line.lineIndex))}
                   >
                     <g
                       style={{
@@ -429,7 +441,41 @@ export default function PitchCanvas() {
           );
         })}
       </svg>
+
+      {/* ── Manual Focus Override Reset ── */}
+      {manualLine !== null && (
+        <button
+          id="reset-manual-focus"
+          onClick={() => setManualLine(null)}
+          style={{
+            position: 'absolute',
+            bottom: 24,
+            right: 24,
+            background: 'var(--player-text)',
+            color: 'var(--player-bg)',
+            border: 'none',
+            borderRadius: 'var(--radius-pill)',
+            padding: '8px 16px',
+            fontSize: '11px',
+            fontWeight: 700,
+            fontFamily: 'Inter, sans-serif',
+            cursor: 'pointer',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+            zIndex: 100,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            animation: 'fadeInUp 0.3s ease-out forwards',
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em'
+          }}
+        >
+          <span>Auto Sync</span>
+          <span style={{ fontSize: 16, lineHeight: 0, marginTop: -1 }}>✕</span>
+        </button>
+      )}
     </div>
+
   );
 }
 
