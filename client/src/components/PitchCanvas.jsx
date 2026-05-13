@@ -68,8 +68,12 @@ export default function PitchCanvas() {
         ? (ctx.currentTime - startCtxTime.current) * playbackRateRef.current
         : 0;
       
+      // ── ZERO-SNAP LOGIC ──
+      // If the offset is very close to zero, force it to zero to avoid "sticky" drift
+      const effectiveOffset = Math.abs(syncOffsetMs) < 10 ? 0 : syncOffsetMs;
+      
       const songSec = pauseOffset.current + elapsed;
-      setCurrentMs(Math.max(0, songSec * 1000) + syncOffsetMs);
+      setCurrentMs(Math.max(0, songSec * 1000) + effectiveOffset);
       
       rafRef.current = requestAnimationFrame(tick);
     };
