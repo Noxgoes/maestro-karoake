@@ -65,8 +65,14 @@ router.get('/', async (req, res) => {
       }
 
       if (Array.isArray(searchResults) && searchResults.length > 0) {
-        // Sort by duration proximity if duration is provided
-        const bestMatch = searchResults
+        // ── SCRIPT SMART-PICKER ──
+        // Look for results that contain Devanagari (Hindi) characters
+        const hindiResults = searchResults.filter(r => /[\u0900-\u097F]/.test(r.plainLyrics || r.syncedLyrics || ''));
+        
+        // Pick from Hindi results if available, otherwise use all results
+        const priorityPool = hindiResults.length > 0 ? hindiResults : searchResults;
+
+        const bestMatch = priorityPool
           .filter(r => r.syncedLyrics)
           .sort((a, b) => {
             if (duration) {
@@ -78,7 +84,7 @@ router.get('/', async (req, res) => {
             const aExact = a.trackName.toLowerCase() === q.toLowerCase() ? 0 : 1;
             const bExact = b.trackName.toLowerCase() === q.toLowerCase() ? 0 : 1;
             return aExact - bExact;
-          })[0];
+          })[0] || priorityPool[0];
 
         if (bestMatch) {
           console.log(`[LRCLIB] ✓ Match Found: ${bestMatch.trackName} (${(bestMatch.duration / 60).toFixed(2)}m)`);
