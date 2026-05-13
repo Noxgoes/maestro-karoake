@@ -5,28 +5,28 @@ import { getAudioContext } from '../hooks/useAudioPlayer';
 
 export default function PitchCanvas() {
   const alignedLyrics = useAppStore(state => state.alignedLyrics);
-  const syncOffsetMs  = useAppStore(state => state.syncOffsetMs);
-  const pitchHistory  = useAppStore(state => state.pitchHistory);
-  const isMicActive   = useAppStore(state => state.isMicActive);
-  const isAnalyzing   = useAppStore(state => state.isAnalyzing);
-  const isPlaying     = useAppStore(state => state.isPlaying);
-  const audioBuffer   = useAppStore(state => state.audioBuffer);
-  const lastSeekTime  = useAppStore(state => state.lastSeekTime);
-  const playbackRate  = useAppStore(state => state.playbackRate);
-  const scrollRef     = useRef(null);
+  const syncOffsetMs = useAppStore(state => state.syncOffsetMs);
+  const pitchHistory = useAppStore(state => state.pitchHistory);
+  const isMicActive = useAppStore(state => state.isMicActive);
+  const isAnalyzing = useAppStore(state => state.isAnalyzing);
+  const isPlaying = useAppStore(state => state.isPlaying);
+  const audioBuffer = useAppStore(state => state.audioBuffer);
+  const lastSeekTime = useAppStore(state => state.lastSeekTime);
+  const playbackRate = useAppStore(state => state.playbackRate);
+  const scrollRef = useRef(null);
 
   // ── Mirror play/pause into local refs for RAF loop ──
-  const isPlayingRef     = useRef(isPlaying);
-  const playbackRateRef  = useRef(playbackRate);
+  const isPlayingRef = useRef(isPlaying);
+  const playbackRateRef = useRef(playbackRate);
   useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
   useEffect(() => { playbackRateRef.current = playbackRate; }, [playbackRate]);
 
   // ── Read time directly from AudioContext via RAF ──
   const [currentMs, setCurrentMs] = useState(0);
   const [manualLine, setManualLine] = useState(null); // NULL = auto, index = locked line
-  const rafRef        = useRef(null);
-  const startCtxTime  = useRef(0);   // ctx.currentTime when play() was called
-  const pauseOffset   = useRef(0);   // song-seconds accumulated before this play segment
+  const rafRef = useRef(null);
+  const startCtxTime = useRef(0);   // ctx.currentTime when play() was called
+  const pauseOffset = useRef(0);   // song-seconds accumulated before this play segment
 
   // Listen for seek events from the player
   useEffect(() => {
@@ -56,8 +56,8 @@ export default function PitchCanvas() {
 
   // Reset when a new audio buffer is loaded
   useEffect(() => {
-    pauseOffset.current   = 0;
-    startCtxTime.current  = 0;
+    pauseOffset.current = 0;
+    startCtxTime.current = 0;
     setCurrentMs(0);
   }, [audioBuffer]);
 
@@ -68,14 +68,14 @@ export default function PitchCanvas() {
       const elapsed = (isPlayingRef.current && startCtxTime.current > 0)
         ? (ctx.currentTime - startCtxTime.current) * playbackRateRef.current
         : 0;
-      
+
       // ── ZERO-SNAP LOGIC ──
       // If the offset is very close to zero, force it to zero to avoid "sticky" drift
       const effectiveOffset = Math.abs(syncOffsetMs) < 10 ? 0 : syncOffsetMs;
-      
+
       const songSec = pauseOffset.current + elapsed;
       setCurrentMs(Math.max(0, songSec * 1000) + effectiveOffset);
-      
+
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
@@ -83,9 +83,9 @@ export default function PitchCanvas() {
   }, [syncOffsetMs]); // Re-run ensures instant snap on sync change
 
   const MIN_WORD_SPACING = 160;
-  const rowHeight = 320; 
-  const padding   = 60;
-  const hPad      = 180; // Increased for ironclad clipping protection
+  const rowHeight = 320;
+  const padding = 60;
+  const hPad = 180; // Increased for ironclad clipping protection
 
   // ── Build per-line layout data ─────────────────────────────────────────────
   const { linesData, minMidi, maxMidi, svgWidth } = useMemo(() => {
@@ -93,7 +93,7 @@ export default function PitchCanvas() {
       return { linesData: [], minMidi: 0, maxMidi: 100, svgWidth: 1200 };
 
     const normalizedLyrics = calculateYPercents(alignedLyrics);
-    const midis   = alignedLyrics.map(w => w.midiNote);
+    const midis = alignedLyrics.map(w => w.midiNote);
     const _minMidi = Math.min(...midis);
     const _maxMidi = Math.max(...midis);
 
@@ -109,10 +109,10 @@ export default function PitchCanvas() {
     const sortedLineKeys = Object.keys(lineMap).sort((a, b) => Number(a) - Number(b));
 
     const _linesData = sortedLineKeys.map((lineIndex, idx) => {
-      const words   = lineMap[lineIndex];
+      const words = lineMap[lineIndex];
       const positionedWords = words.map((w, i) => {
         // Distribute X evenly between hPad and svgWidth - hPad
-        const x = words.length > 1 
+        const x = words.length > 1
           ? hPad + (i / (words.length - 1)) * (_svgWidth - hPad * 2)
           : _svgWidth / 2; // Center if only one word
         const usableHeight = rowHeight - padding * 2;
@@ -122,9 +122,9 @@ export default function PitchCanvas() {
         return { ...w, x, y };
       });
 
-      const pathData     = generateBezierPath(positionedWords);
-      const lineStartMs  = positionedWords[0].startMs;
-      const lineEndMs    = positionedWords[positionedWords.length - 1].endMs;
+      const pathData = generateBezierPath(positionedWords);
+      const lineStartMs = positionedWords[0].startMs;
+      const lineEndMs = positionedWords[positionedWords.length - 1].endMs;
 
       return { lineIndex, yOffset: idx * rowHeight, words: positionedWords, pathData, startMs: lineStartMs, endMs: lineEndMs };
     });
@@ -152,7 +152,7 @@ export default function PitchCanvas() {
     linesData.find(l => currentMs >= l.startMs && currentMs < l.endMs) ??
     (currentMs > 0 ? [...linesData].reverse().find(l => currentMs >= l.endMs) : null);
 
-  const activeLine = manualLine !== null 
+  const activeLine = manualLine !== null
     ? (linesData.find(l => Number(l.lineIndex) === manualLine) || autoLine)
     : autoLine;
 
@@ -164,16 +164,16 @@ export default function PitchCanvas() {
     const container = scrollRef.current;
     const viewportH = container.clientHeight;
     const viewportW = container.clientWidth;
-    
+
     // Scale factor: how much the SVG is stretched/shrunk relative to our 1200 base
     const scale = viewportW / 1200;
-    
+
     // Calculate target in screen pixels
     const lineCenterSvg = Number(activeLine.yOffset) + rowHeight / 2;
-    const scrollTarget  = (lineCenterSvg * scale) - (viewportH / 2);
-    
-    container.scrollTo({ 
-      top: Math.max(0, scrollTarget), 
+    const scrollTarget = (lineCenterSvg * scale) - (viewportH / 2);
+
+    container.scrollTo({
+      top: Math.max(0, scrollTarget),
       behavior: manualLine !== null ? 'instant' : 'smooth' // Snappier when manually clicking
     });
   }, [activeLine?.lineIndex, manualLine]);
@@ -183,12 +183,12 @@ export default function PitchCanvas() {
     const line = linesData.find(l => timeMs >= l.startMs - 2000 && timeMs <= l.endMs + 2000);
     if (!line) return null;
     const lineDuration = line.endMs - line.startMs;
-    const progress     = Math.max(0, Math.min(1, (timeMs - line.startMs) / Math.max(1, lineDuration)));
+    const progress = Math.max(0, Math.min(1, (timeMs - line.startMs) / Math.max(1, lineDuration)));
     const x = hPad + progress * (svgWidth - hPad * 2);
-    const pitchRange       = Math.max(1, maxMidi - minMidi);
-    const yPercent         = (maxMidi - midi) / pitchRange;
+    const pitchRange = Math.max(1, maxMidi - minMidi);
+    const yPercent = (maxMidi - midi) / pitchRange;
     const sensitiveYPercent = 0.5 + (yPercent - 0.5) * 1.15;
-    const usableHeight     = rowHeight - padding * 2;
+    const usableHeight = rowHeight - padding * 2;
     const y = padding + Math.min(Math.max(sensitiveYPercent, 0), 1) * usableHeight;
     return { x, y: y + line.yOffset, rawY: y, lineOffset: line.yOffset };
   };
@@ -210,7 +210,7 @@ export default function PitchCanvas() {
     if (!svgElement) return;
     const svgData = new XMLSerializer().serializeToString(svgElement);
     const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-    const url  = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url; link.download = 'pitch-map.svg';
     document.body.appendChild(link); link.click(); document.body.removeChild(link);
@@ -276,12 +276,12 @@ export default function PitchCanvas() {
         Export Pitch Map
       </button>
 
-      <svg 
-        id="pitch-canvas-svg" 
-        width="100%" 
+      <svg
+        id="pitch-canvas-svg"
+        width="100%"
         height="auto"
-        viewBox={`0 0 ${svgWidth} ${totalHeight}`} 
-        style={{ display: 'block', background: 'var(--bg)' }} 
+        viewBox={`0 0 ${svgWidth} ${totalHeight}`}
+        style={{ display: 'block', background: 'var(--bg)' }}
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
@@ -300,7 +300,7 @@ export default function PitchCanvas() {
 
         {linesData.map(line => {
           const isLineActive = activeLine && Number(activeLine.lineIndex) === Number(line.lineIndex);
-          const isLinePast   = activeLine
+          const isLinePast = activeLine
             ? Number(line.lineIndex) < Number(activeLine.lineIndex)
             : currentMs > line.endMs;
 
@@ -337,22 +337,22 @@ export default function PitchCanvas() {
               {line.words.map((w, i) => {
                 if (i === line.words.length - 1) return null;
                 const next = line.words[i + 1];
-                const dx   = next.x - w.x;
-                const dy   = next.y - w.y;
+                const dx = next.x - w.x;
+                const dy = next.y - w.y;
                 const angle = Math.atan2(dy, dx);
-                const dist  = Math.sqrt(dx * dx + dy * dy);
+                const dist = Math.sqrt(dx * dx + dy * dy);
                 const offset = 32;
                 if (dist < offset * 1.5) return null;
-                const x1 = w.x    + Math.cos(angle) * offset;
-                const y1 = w.y    + Math.sin(angle) * offset;
+                const x1 = w.x + Math.cos(angle) * offset;
+                const y1 = w.y + Math.sin(angle) * offset;
                 const x2 = next.x - Math.cos(angle) * offset;
                 const y2 = next.y - Math.sin(angle) * offset;
-                const pitchDir   = next.midiNote > w.midiNote ? 'up' : next.midiNote < w.midiNote ? 'down' : 'flat';
+                const pitchDir = next.midiNote > w.midiNote ? 'up' : next.midiNote < w.midiNote ? 'down' : 'flat';
                 const arrowColor = isLineActive
                   ? '#121212'
-                  : pitchDir === 'up'   ? 'var(--pitch-up)'
-                  : pitchDir === 'down' ? 'var(--pitch-down)'
-                  : 'var(--pitch-flat)';
+                  : pitchDir === 'up' ? 'var(--pitch-up)'
+                    : pitchDir === 'down' ? 'var(--pitch-down)'
+                      : 'var(--pitch-flat)';
                 return (
                   <line
                     key={`arrow-${w.wordIndex}`}
@@ -369,10 +369,10 @@ export default function PitchCanvas() {
               {/* ── Words ── */}
               {line.words.map((w, i) => {
                 // Colour / size based on LINE state (unified line highlight)
-                const textColor  = isLineActive ? '#121212'
-                  : isLinePast   ? 'rgba(157, 143, 127, 0.25)' 
-                  : 'rgba(74, 69, 64, 0.4)';
-                const fontSize   = isLineActive ? '24' : '20';
+                const textColor = isLineActive ? '#121212'
+                  : isLinePast ? 'rgba(157, 143, 127, 0.25)'
+                    : 'rgba(74, 69, 64, 0.4)';
+                const fontSize = isLineActive ? '24' : '20';
                 const fontWeight = isLineActive ? '700' : '500';
 
                 let rotation = 0;
@@ -388,7 +388,7 @@ export default function PitchCanvas() {
                   <g
                     key={`word-${w.wordIndex}`}
                     transform={`translate(${w.x}, ${w.y}) rotate(${rotation})`}
-                    style={{ 
+                    style={{
                       transition: 'all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
                       cursor: 'pointer',
                       pointerEvents: 'all'
