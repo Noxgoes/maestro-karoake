@@ -1,4 +1,5 @@
 import express from 'express';
+import axios from 'axios';
 import YTDlpWrap from 'yt-dlp-wrap';
 import fs from 'fs';
 import path from 'path';
@@ -48,17 +49,48 @@ router.get('/info', async (req, res) => {
   try {
     const { url } = req.query;
     if (!url) return res.status(400).json({ error: 'URL is required' });
-    if (!ytDlpWrap) return res.status(503).json({ error: 'yt-dlp not initialized' });
+    
+    console.log(`[YT-INFO] Fetching metadata for: ${url}`);
+    
+    // ── FALLBACK 1: Try OEmbed API first (fastest, rarely blocked) ──
+    try {
+      const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+      const { data: oembed } = await axios.get(oembedUrl, { timeout: 5000 });
+      if (oembed && oembed.title) {
+        console.log(`[YT-INFO] ✓ OEmbed success: ${oembed.title}`);
+        return res.json({
+          title: oembed.title,
+          uploader: oembed.author_name,
+          artist: oembed.author_name,
+          track: oembed.title,
+          source: 'oembed'
+        });
+      }
+    } catch (oerr) {
+      console.warn(`[YT-INFO] OEmbed failed, trying yt-dlp: ${oerr.message}`);
+    }
 
+    // ── FALLBACK 2: Try yt-dlp (full metadata) ──
+    if (!ytDlpWrap) return res.status(503).json({ error: 'yt-dlp not initialized' });
     const metadata = await ytDlpWrap.getVideoInfo(url);
     res.json({
       title: metadata.title,
       uploader: metadata.uploader,
-      artist: metadata.artist || metadata.uploader, // fallback to uploader if official artist tag missing
-      track: metadata.track || metadata.title
+      artist: metadata.artist || metadata.uploader,
+      track: metadata.track || metadata.title,
+      source: 'ytdlp'
     });
   } catch (error) {
-    console.error('[YT-INFO ERROR]', error.message);
+    const msg = error.message || '';
+    console.error('[YT-INFO ERROR]', msg);
+    
+    if (msg.includes('429')) {
+      return res.status(429).json({ error: 'YouTube is rate-limiting your IP. Please try again later or use a VPN.' });
+    }
+    if (msg.includes('Sign in')) {
+      return res.status(403).json({ error: 'YouTube bot detection triggered. Try a different video.' });
+    }
+    
     res.status(500).json({ error: 'Failed to fetch video info' });
   }
 });
@@ -110,8 +142,17 @@ router.post('/extract', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error extracting audio:', error);
-    res.status(500).json({ error: 'Failed to extract audio' });
+    const msg = error.message || '';
+    console.error('[YT-EXTRACT ERROR]', msg);
+    
+    if (msg.includes('429')) {
+      return res.status(429).json({ error: 'YouTube is rate-limiting your IP. Please try again later or use a VPN.' });
+    }
+    if (msg.includes('Sign in')) {
+      return res.status(403).json({ error: 'YouTube bot detection triggered. Try a different video or use a VPN.' });
+    }
+    
+    res.status(500).json({ error: 'Failed to extract audio from YouTube. The link might be restricted or your IP might be blocked.' });
   }
 });
 
