@@ -3,13 +3,8 @@ import { create } from 'zustand';
 export const useAppStore = create((set, get) => ({
   song: '',
   artist: '',
-  originalLyrics: [],
-  romanizedLyrics: [],
-  languageMode: 'original', // 'original' or 'romanized'
-  lyrics: [], // Currently active lyrics array based on mode
+  lyrics: [], // The word array for the current song
   alignedLyrics: [], // Currently active aligned array
-  alignedOriginal: [],
-  alignedRomanized: [],
   isAnalyzing: false,
   showPlayer: false,
   analysisStep: '',
@@ -42,15 +37,6 @@ export const useAppStore = create((set, get) => ({
   setSongInfo: (song, artist) => set({ song, artist }),
   setSong: (song) => set({ song }),
   setArtist: (artist) => set({ artist }),
-  useRomanized: true,
-  toggleRomanized: () => {
-    const { useRomanized, alignedOriginal, alignedRomanized } = get();
-    const next = !useRomanized;
-    set({ 
-      useRomanized: next, 
-      alignedLyrics: (next && alignedRomanized.length > 0) ? alignedRomanized : alignedOriginal
-    });
-  },
 
   setLyrics: (data) => {
     if (!data) return;
@@ -58,44 +44,21 @@ export const useAppStore = create((set, get) => ({
     // Reset syncedLyrics to null by default
     set({ syncedLyrics: null });
     
-    const lyricsObj = data.lyrics || data;
+    const lyricsData = data.lyrics || data;
     const synced = data.syncedLyrics || null;
 
-    if (Array.isArray(lyricsObj)) {
-      set({ 
-        lyrics: lyricsObj, 
-        originalLyrics: lyricsObj, 
-        romanizedLyrics: [], 
-        syncedLyrics: synced,
-        useRomanized: false 
-      });
-    } else {
-      const original = lyricsObj.original || [];
-      const romanized = lyricsObj.romanized || [];
-      const hasRomanized = romanized.length > 0;
-      
-      // If we have romanized, default to it
-      const activeArray = hasRomanized ? romanized : original;
+    // We assume data.lyrics is an object { original: [...] } or just an array
+    const words = Array.isArray(lyricsData) ? lyricsData : (lyricsData.original || []);
 
-      set({ 
-        originalLyrics: original,
-        romanizedLyrics: romanized,
-        lyrics: activeArray,
-        alignedLyrics: [],
-        alignedOriginal: [],
-        alignedRomanized: [],
-        syncedLyrics: synced,
-        useRomanized: hasRomanized,
-        artist: data.officialArtist || get().artist,
-        song: data.officialTitle || get().song
-      });
-    }
+    set({ 
+      lyrics: words,
+      alignedLyrics: [],
+      syncedLyrics: synced,
+      artist: data.officialArtist || get().artist,
+      song: data.officialTitle || get().song
+    });
   },
-  setLanguageMode: (mode) => set((state) => ({
-    languageMode: mode,
-    lyrics: mode === 'romanized' && state.romanizedLyrics.length > 0 ? state.romanizedLyrics : state.originalLyrics,
-    alignedLyrics: [] // Require re-alignment when lyrics change
-  })),
+
   setAlignedLyrics: (alignedLyrics) => set({ alignedLyrics }),
   setIsAnalyzing: (isAnalyzing) => set({ isAnalyzing }),
   setShowPlayer: (showPlayer) => set({ showPlayer }),

@@ -24,30 +24,20 @@ export function usePitchExtraction() {
       }
 
       // ── Step 2: Pitch Detection (Basic Pitch) ────────────────────────────
-      // For Phase 1 we use a simple pitch detection fallback if Basic Pitch isn't ready
-      // or we can use the Spotify library if it's correctly linked.
-      // For now, let's assume we have notes from a pitch detection process.
-      // Using a simplified mock pitch extractor for dev if BasicPitch is missing:
       const sampleRate = audioBuffer.sampleRate;
       const notes = await mockPitchDetect(mono, sampleRate);
 
       // ── Step 3: Metadata Fetch (Backup) ──────────────────────────────────
-      const { song, artist, syncedLyrics: storedSynced, originalLyrics, romanizedLyrics, useRomanized } = useAppStore.getState();
+      const { song, artist, syncedLyrics: storedSynced, lyrics: originalLyrics } = useAppStore.getState();
       let syncedLyrics = storedSynced;
 
       if (!syncedLyrics && song) {
         try {
           let finalArtist = artist || '';
           let finalSong = song || '';
-          const arijitInSong = finalSong.toLowerCase().includes('arijit') || finalSong.toLowerCase().includes('singh');
-          const kesariyaInArtist = finalArtist.toLowerCase().includes('kesariya');
-          if (arijitInSong && kesariyaInArtist) {
-            const temp = finalArtist; finalArtist = finalSong; finalSong = temp;
-          }
           const targetDuration = Math.floor(audioBuffer.duration);
           let resData = null;
 
-          // Attempt direct GET if artist exists
           if (finalArtist) {
             try {
               const params = new URLSearchParams({ artist_name: finalArtist, track_name: finalSong, duration: targetDuration.toString() });
@@ -56,9 +46,7 @@ export function usePitchExtraction() {
             } catch (e) {}
           }
 
-          // If no result yet, try broad SEARCH (great for missing artists)
           if (!resData || !resData.syncedLyrics) {
-            console.log(`[PitchExtraction] Direct GET failed/skipped. Trying broad search for: ${finalSong}`);
             const searchRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(finalSong)}`);
             if (searchRes.ok) {
               const results = await searchRes.json();
@@ -67,7 +55,6 @@ export function usePitchExtraction() {
                 .sort((a, b) => Math.abs(a.duration - targetDuration) - Math.abs(b.duration - targetDuration))[0];
               
               if (bestMatch) {
-                console.log(`[PitchExtraction] Found match via search duration: ${bestMatch.artistName} - ${bestMatch.trackName}`);
                 resData = bestMatch;
               }
             }
@@ -82,24 +69,13 @@ export function usePitchExtraction() {
       const lrcLines = syncedLyrics ? parseLrc(syncedLyrics) : null;
 
       // ── Step 4: ALIGNMENT ──────────────────────────────────────────────
-      // Align Original
-      const alignedOriginal = lrcLines 
+      const alignedLyrics = lrcLines 
         ? alignLyricsToLrc(originalLyrics, lrcLines, notes)
         : alignLyrics(originalLyrics, notes, audioBuffer.duration);
 
-      // Align Romanized
-      let alignedRomanized = [];
-      if (romanizedLyrics && romanizedLyrics.length > 0) {
-        alignedRomanized = lrcLines
-          ? alignLyricsToLrc(romanizedLyrics, lrcLines, notes)
-          : alignLyrics(romanizedLyrics, notes, audioBuffer.duration);
-      }
-
       // ── Step 5: COMMIT ──────────────────────────────────────────────────
       useAppStore.setState({
-        alignedOriginal,
-        alignedRomanized,
-        alignedLyrics: (useRomanized && alignedRomanized.length > 0) ? alignedRomanized : alignedOriginal,
+        alignedLyrics,
         isAnalyzing: false,
         analysisStep: 'complete'
       });
@@ -114,7 +90,6 @@ export function usePitchExtraction() {
 }
 
 async function mockPitchDetect(fullMono, fullSampleRate) {
-  // ── 1. Downsample for speed (11025Hz is plenty for vocals) ──
   const targetRate = 11025;
   const ratio = Math.floor(fullSampleRate / targetRate);
   const mono = new Float32Array(Math.floor(fullMono.length / ratio));
@@ -122,8 +97,8 @@ async function mockPitchDetect(fullMono, fullSampleRate) {
   const sampleRate = fullSampleRate / ratio;
 
   const notes = [];
-  const frameSize = 512; // Smaller frame for lower sample rate
-  const step = 512;      // Jump more aggressively
+  const frameSize = 512;
+  const step = 512;
   const minDurationMs = 150;
   
   let current = null;
@@ -137,8 +112,6 @@ async function mockPitchDetect(fullMono, fullSampleRate) {
 
   for (let i = 0; i < mono.length - frameSize; i += step) {
     const frame = mono.slice(i, i + frameSize);
-    
-    // Fast peak check
     let maxVal = 0;
     for (let j = 0; j < frame.length; j++) if (Math.abs(frame[j]) > maxVal) maxVal = Math.abs(frame[j]);
     if (maxVal < 0.05) {
@@ -177,7 +150,6 @@ async function mockPitchDetect(fullMono, fullSampleRate) {
 
 function autoCorrelate(buffer, sampleRate) {
   const SIZE = buffer.length;
-  // Human pitch range: 50Hz (220 samples at 11kHz) to 1000Hz (11 samples)
   let minOffset = Math.max(2, Math.floor(sampleRate / 1000));
   let maxOffset = Math.min(SIZE - 1, Math.floor(sampleRate / 50));
   

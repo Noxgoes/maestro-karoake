@@ -12,7 +12,7 @@ router.get('/', async (req, res) => {
       return res.status(400).json({ error: 'Song name (q) is required' });
     }
 
-    let lyrics = { original: [], romanized: [] };
+    let lyrics = { original: [] };
     let officialArtist = artist || '';
     let officialTitle = q;
     let source = 'Genius';
@@ -45,7 +45,6 @@ router.get('/', async (req, res) => {
       // We clean this up to help LRCLIB find it.
       const cleanTitle = officialTitle
         .replace(/\(Romanized\)/gi, '')
-        .replace(/\(Hindi\)/gi, '')
         .replace(/\[.*\]/g, '')
         .split(' - ').pop() // Handle "Artist - Title" formats
         .trim();

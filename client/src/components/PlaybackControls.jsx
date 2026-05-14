@@ -8,9 +8,6 @@ export default function PlaybackControls() {
   const currentTime = useAppStore(state => state.currentTime);
   const duration = useAppStore(state => state.duration);
   const playbackRate = useAppStore(state => state.playbackRate);
-  const romanizedLyrics = useAppStore(state => state.romanizedLyrics);
-  const useRomanized = useAppStore(state => state.useRomanized);
-  const toggleRomanized = useAppStore(state => state.toggleRomanized);
   const accuracyScore = useAppStore(state => state.accuracyScore);
   const syncOffsetMs = useAppStore(state => state.syncOffsetMs);
   const setPlaybackRate = useAppStore(state => state.setPlaybackRate);
@@ -161,30 +158,6 @@ export default function PlaybackControls() {
           ))}
         </div>
 
-        {/* ── Romanization Toggle ── */}
-        {romanizedLyrics && romanizedLyrics.length > 0 && (
-          <button
-            id="toggle-romanization"
-            onClick={toggleRomanized}
-            style={{
-              padding: '6px 14px',
-              borderRadius: 'var(--radius-pill)',
-              background: useRomanized ? 'var(--player-text)' : 'rgba(255,255,255,0.06)',
-              border: '0.5px solid rgba(255,255,255,0.1)',
-              color: useRomanized ? 'var(--player-bg)' : '#F5F0E8',
-              fontSize: 11,
-              fontWeight: 600,
-              fontFamily: 'Inter, sans-serif',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-              whiteSpace: 'nowrap',
-              textTransform: 'uppercase',
-              letterSpacing: '0.04em'
-            }}
-          >
-            {useRomanized ? 'Romanized' : 'Original'}
-          </button>
-        )}
 
         {/* ── Sync offset nudge ── */}
         <div style={{

@@ -258,7 +258,7 @@ function HeroSection({ onGetStarted, isMicActive, setIsMicActive }) {
 }
 
 // ── Studio page ────────────────────────────────────────────────────────────
-function StudioSection({ error, originalLyrics, romanizedLyrics, languageMode, setLanguageMode, isMicActive, setIsMicActive, onHome }) {
+function StudioSection({ error, isMicActive, setIsMicActive, onHome }) {
   return (
     <>
       <StudioNav isMicActive={isMicActive} setIsMicActive={setIsMicActive} onHome={onHome} />
@@ -287,27 +287,6 @@ function StudioSection({ error, originalLyrics, romanizedLyrics, languageMode, s
             <div className="kara-error" style={{ marginTop: 16 }}>{error}</div>
           )}
 
-          {originalLyrics?.length > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 20 }}>
-              <div className="lang-toggle">
-                <button
-                  className={`lang-btn${languageMode === 'original' ? ' active' : ''}`}
-                  onClick={() => setLanguageMode('original')}
-                >
-                  Original
-                </button>
-                <button
-                  className={`lang-btn${languageMode === 'romanized' ? ' active' : ''}`}
-                  onClick={() => setLanguageMode('romanized')}
-                  disabled={!romanizedLyrics?.length}
-                  style={!romanizedLyrics?.length ? { opacity: 0.4 } : {}}
-                >
-                  Romanized
-                </button>
-              </div>
-            </div>
-          )}
-
           <AudioUploader />
         </div>
       </div>
@@ -320,10 +299,6 @@ function App() {
   const error        = useAppStore(state => state.error);
   const song         = useAppStore(state => state.song);
   const artist       = useAppStore(state => state.artist);
-  const originalLyrics   = useAppStore(state => state.originalLyrics);
-  const romanizedLyrics  = useAppStore(state => state.romanizedLyrics);
-  const languageMode     = useAppStore(state => state.languageMode);
-  const setLanguageMode  = useAppStore(state => state.setLanguageMode);
   const isMicActive      = useAppStore(state => state.isMicActive);
   const setIsMicActive   = useAppStore(state => state.setIsMicActive);
   const accuracyScore    = useAppStore(state => state.accuracyScore);
@@ -400,10 +375,6 @@ function App() {
     return (
       <StudioSection
         error={error}
-        originalLyrics={originalLyrics}
-        romanizedLyrics={romanizedLyrics}
-        languageMode={languageMode}
-        setLanguageMode={setLanguageMode}
         isMicActive={isMicActive}
         setIsMicActive={setIsMicActive}
         onHome={() => setShowStudio(false)}   // FIX 3: studio logo → home

@@ -415,9 +415,15 @@ export default function PitchCanvas() {
                         animation: `fadeInUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards`,
                         animationDelay: `${Math.min(2, w.wordIndex * 0.05)}s`,
                         opacity: 0,
-                        pointerEvents: 'none'
+                        pointerEvents: 'auto'
                       }}
                     >
+                      {/* Transparent hit-box for easier clicking */}
+                      <rect
+                        x="-40" y="-20" width="80" height="40"
+                        fill="transparent"
+                        style={{ cursor: 'pointer' }}
+                      />
                       <text
                         x="0" y="0"
                         textAnchor={i === 0 ? 'start' : i === line.words.length - 1 ? 'end' : 'middle'}
