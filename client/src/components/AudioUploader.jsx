@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { usePitchExtraction } from '../hooks/usePitchExtraction';
 import { useAppStore } from '../store/appStore';
 import { extractAudioMetadata } from '../utils/metadataUtils';
@@ -8,6 +9,7 @@ import { getAudioContext } from '../hooks/useAudioPlayer';
 let _abortController = null;
 
 export default function AudioUploader() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState('upload');
   const [file, setFile] = useState(null);
   const [ytUrl, setYtUrl] = useState('');
@@ -28,7 +30,6 @@ export default function AudioUploader() {
   const setAnalysisStep = useAppStore(state => state.setAnalysisStep);
   const setError     = useAppStore(state => state.setError);
   const setAudioBuffer  = useAppStore(state => state.setAudioBuffer);
-  const setShowPlayer   = useAppStore(state => state.setShowPlayer);  // FIX 2
   const setIsAnalyzing  = useAppStore(state => state.setIsAnalyzing);
 
   useEffect(() => {
@@ -50,14 +51,12 @@ export default function AudioUploader() {
           const res = await fetch(`${apiUrl}/api/audio/info?url=${encodeURIComponent(ytUrl)}`);
           if (res.ok) {
             const data = await res.json();
-            // Use our smart filename-splitter on the YT title
             const meta = await extractAudioMetadata({ name: data.title });
             setSong(meta.song);
             setArtist(meta.artist);
           }
         } catch (e) { console.warn('Failed to fetch YT metadata:', e); }
       };
-      // Debounce slightly to avoid firing on every keystroke
       const timer = setTimeout(fetchYtInfo, 800);
       return () => clearTimeout(timer);
     }
@@ -96,7 +95,6 @@ export default function AudioUploader() {
   };
 
   const analyzeSong = async (audioData) => {
-    // FIX 1: set up AbortController and expose it globally for exitPlayer
     _abortController = new AbortController();
     window.__karaAbortAnalysis = () => _abortController?.abort();
     const signal = _abortController.signal;
@@ -108,24 +106,22 @@ export default function AudioUploader() {
 
       if (!currentSong) throw new Error('Could not identify song. Please enter title manually.');
 
-      // Reset sync offset for fresh song
       useAppStore.getState().setSyncOffsetMs(0);
 
-      // FIX 2: navigate to player page IMMEDIATELY — before any fetch
-      setIsAnalyzing(true); // Show loading screen instantly
-      setShowPlayer(true);
+      // ── Navigate to player page IMMEDIATELY — before any fetch ──
+      setIsAnalyzing(true); 
+      navigate('/player');
       
-      // Clear previous album art, then fetch new one asynchronously via server proxy
       useAppStore.getState().setAlbumArt(null);
 
-      // 1. Decode audio FIRST so we have the exact duration for smarter LRCLIB search
-      setAnalysisStep('extracting-pitch'); // reusing label for user feedback
+      // 1. Decode audio FIRST
+      setAnalysisStep('extracting-pitch');
       const audioContext = getAudioContext();
       if (audioContext.state === 'suspended') await audioContext.resume();
       const audioBuffer = await audioContext.decodeAudioData(audioData);
       setAudioBuffer(audioBuffer);
 
-      // 2. Fetch lyrics (with duration!) and metadata concurrently for speed
+      // 2. Fetch lyrics and metadata concurrently
       setAnalysisStep('fetching-lyrics');
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
       const query = `${currentSong} ${currentArtist || ''}`.trim();
@@ -152,12 +148,11 @@ export default function AudioUploader() {
       setAnalysisStep('complete');
       useAppStore.getState().setIsPlaying(true);
     } catch (err) {
-      // Swallow AbortError — user navigated away intentionally
       if (err.name === 'AbortError') return;
       console.error('Analysis pipeline failed:', err);
       setError(err.message);
       setAnalysisStep('');
-      setShowPlayer(false);
+      navigate('/studio');
     } finally {
       _abortController = null;
       window.__karaAbortAnalysis = null;
@@ -175,15 +170,13 @@ export default function AudioUploader() {
     if (!ytUrl) return;
     setIsFetchingYt(true);
 
-    // FIX 1: set up AbortController
     _abortController = new AbortController();
     window.__karaAbortAnalysis = () => _abortController?.abort();
     const signal = _abortController.signal;
 
     try {
-      // FIX 2: navigate to player immediately
       setIsAnalyzing(true);
-      setShowPlayer(true);
+      navigate('/player');
       setAnalysisStep('extracting-pitch');
 
       const response = await fetch('http://localhost:3001/api/audio/extract', {
@@ -203,6 +196,7 @@ export default function AudioUploader() {
       setIsFetchingYt(false);
       _abortController = null;
       window.__karaAbortAnalysis = null;
+      setIsAnalyzing(false);
     }
   };
 
@@ -226,7 +220,6 @@ export default function AudioUploader() {
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
         >
-          {/* Upload icon */}
           <div
             style={{
               width: 52, height: 52, borderRadius: '50%',
@@ -256,7 +249,6 @@ export default function AudioUploader() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, width: '100%' }}>
-          {/* File chip */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 10,
             background: '#ECFDF5', border: '0.5px solid #6EE7B7',
@@ -276,7 +268,6 @@ export default function AudioUploader() {
             >×</button>
           </div>
 
-          {/* Metadata edit */}
           {!isAnalyzing && (
             <div style={{ display: 'flex', gap: 10, width: '100%', maxWidth: 360 }}>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -358,7 +349,6 @@ export default function AudioUploader() {
         />
       </div>
 
-      {/* Metadata edit */}
       {!isAnalyzing && !isFetchingYt && (
         <div style={{ display: 'flex', gap: 10, width: '100%', maxWidth: 360 }}>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -417,7 +407,6 @@ export default function AudioUploader() {
   /* ── Render ──────────────────────────────────────────────────── */
   return (
     <div style={{ width: '100%', marginTop: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Tabs */}
       <div className="kara-tabs" style={{ maxWidth: 280, margin: '0 auto' }}>
         <button
           id="tab-upload"
@@ -435,7 +424,6 @@ export default function AudioUploader() {
         </button>
       </div>
 
-      {/* Tab content */}
       <div style={{
         background: 'var(--surface)',
         border: '0.5px solid var(--border-light)',

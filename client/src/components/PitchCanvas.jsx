@@ -327,7 +327,6 @@ export default function PitchCanvas() {
                 onClick={(e) => {
                   e.stopPropagation();
                   setManualLine(Number(line.lineIndex));
-                  seek(line.startMs / 1000);
                 }}
               />
 

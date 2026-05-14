@@ -1,4 +1,5 @@
 import React from 'react';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import AudioUploader from './components/AudioUploader';
 import PitchCanvas from './components/PitchCanvas';
 import PlaybackControls from './components/PlaybackControls';
@@ -79,11 +80,10 @@ function KaraLogo({ onClick }) {
 }
 
 // ── Navigation bars ────────────────────────────────────────────────────────
-function HeroNav({ isMicActive, setIsMicActive }) {
+function HeroNav({ isMicActive, setIsMicActive, onLogoClick }) {
   return (
     <nav className="kara-nav">
-      {/* FIX 3: logo navigates to hero (already on hero, no-op or just scroll top) */}
-      <KaraLogo onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} />
+      <KaraLogo onClick={onLogoClick} />
 
       <div className="nav-search">
         <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
@@ -110,7 +110,6 @@ function HeroNav({ isMicActive, setIsMicActive }) {
 function StudioNav({ isMicActive, setIsMicActive, onHome }) {
   return (
     <nav className="kara-nav">
-      {/* FIX 3: logo navigates home */}
       <KaraLogo onClick={onHome} />
 
       <div className="nav-auth">
@@ -126,7 +125,6 @@ function StudioNav({ isMicActive, setIsMicActive, onHome }) {
   );
 }
 
-// FIX 1 & FIX 3: Player nav always shows logo + "Try another song"
 function PlayerNav({ song, artist, onExit, accuracyScore }) {
   const albumArt = useAppStore(state => state.albumArt);
 
@@ -135,11 +133,9 @@ function PlayerNav({ song, artist, onExit, accuracyScore }) {
       className="kara-nav"
       style={{ borderBottom: '0.5px solid var(--border-light)', background: 'var(--bg)' }}
     >
-      {/* FIX 3 + FIX 1: logo click exits player */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
         <KaraLogo onClick={onExit} />
 
-        {/* Song info */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {albumArt && (
             <img src={albumArt} alt="" style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover' }} />
@@ -157,9 +153,7 @@ function PlayerNav({ song, artist, onExit, accuracyScore }) {
         </div>
       </div>
 
-      {/* Right side */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        {/* Accuracy chip */}
         {accuracyScore !== null && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,
@@ -176,7 +170,6 @@ function PlayerNav({ song, artist, onExit, accuracyScore }) {
           </div>
         )}
 
-        {/* FIX 1: "Try another song" pill */}
         <button
           id="try-another-song"
           onClick={onExit}
@@ -203,11 +196,20 @@ function PlayerNav({ song, artist, onExit, accuracyScore }) {
   );
 }
 
-// ── Hero page ──────────────────────────────────────────────────────────────
-function HeroSection({ onGetStarted, isMicActive, setIsMicActive }) {
+// ── Pages ──────────────────────────────────────────────────────────────────
+
+function HeroPage() {
+  const navigate = useNavigate();
+  const isMicActive = useAppStore(state => state.isMicActive);
+  const setIsMicActive = useAppStore(state => state.setIsMicActive);
+
   return (
     <>
-      <HeroNav isMicActive={isMicActive} setIsMicActive={setIsMicActive} />
+      <HeroNav 
+        isMicActive={isMicActive} 
+        setIsMicActive={setIsMicActive} 
+        onLogoClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+      />
       <section className="kara-hero" aria-label="Hero">
         <AlbumScatter />
         <div className="hero-center fade-in-up">
@@ -221,7 +223,7 @@ function HeroSection({ onGetStarted, isMicActive, setIsMicActive }) {
           <p className="hero-sub fade-in-up fade-in-up-d3">
             Karaoke your favorites.<br />Anytime, anywhere.
           </p>
-          <button id="hero-cta" className="btn-cta fade-in-up fade-in-up-d4" onClick={onGetStarted}>
+          <button id="hero-cta" className="btn-cta fade-in-up fade-in-up-d4" onClick={() => navigate('/studio')}>
             Get Started
             <span style={{ fontSize: 18, lineHeight: 1 }}>→</span>
           </button>
@@ -257,11 +259,15 @@ function HeroSection({ onGetStarted, isMicActive, setIsMicActive }) {
   );
 }
 
-// ── Studio page ────────────────────────────────────────────────────────────
-function StudioSection({ error, isMicActive, setIsMicActive, onHome }) {
+function StudioPage() {
+  const navigate = useNavigate();
+  const error = useAppStore(state => state.error);
+  const isMicActive = useAppStore(state => state.isMicActive);
+  const setIsMicActive = useAppStore(state => state.setIsMicActive);
+
   return (
     <>
-      <StudioNav isMicActive={isMicActive} setIsMicActive={setIsMicActive} onHome={onHome} />
+      <StudioNav isMicActive={isMicActive} setIsMicActive={setIsMicActive} onHome={() => navigate('/')} />
       <div style={{
         minHeight: '100vh', paddingTop: '90px', paddingBottom: '60px',
         background: 'var(--bg)', display: 'flex', flexDirection: 'column',
@@ -282,11 +288,7 @@ function StudioSection({ error, isMicActive, setIsMicActive, onHome }) {
 
         <div className="kara-studio-panel fade-in-up fade-in-up-d2">
           <SearchBar />
-
-          {error && (
-            <div className="kara-error" style={{ marginTop: 16 }}>{error}</div>
-          )}
-
+          {error && <div className="kara-error" style={{ marginTop: 16 }}>{error}</div>}
           <AudioUploader />
         </div>
       </div>
@@ -294,37 +296,22 @@ function StudioSection({ error, isMicActive, setIsMicActive, onHome }) {
   );
 }
 
-// ── App root ───────────────────────────────────────────────────────────────
-function App() {
-  const error        = useAppStore(state => state.error);
-  const song         = useAppStore(state => state.song);
-  const artist       = useAppStore(state => state.artist);
-  const isMicActive      = useAppStore(state => state.isMicActive);
-  const setIsMicActive   = useAppStore(state => state.setIsMicActive);
-  const accuracyScore    = useAppStore(state => state.accuracyScore);
-  const showPlayer       = useAppStore(state => state.showPlayer);   // FIX 2
-  const isAnalyzing      = useAppStore(state => state.isAnalyzing);
-
-  const [showStudio, setShowStudio] = React.useState(false);
-
-  // Audio controls needed for exitPlayer (FIX 1)
+function PlayerPage() {
+  const navigate = useNavigate();
+  const song = useAppStore(state => state.song);
+  const artist = useAppStore(state => state.artist);
+  const accuracyScore = useAppStore(state => state.accuracyScore);
+  const isAnalyzing = useAppStore(state => state.isAnalyzing);
+  const audioBuffer = useAppStore(state => state.audioBuffer);
   const { stop } = useAudioControls();
 
-  useMicPitch();
-
-  // FIX 1 — exitPlayer: stop audio, abort fetch, clear state, go home
   const exitPlayer = React.useCallback(() => {
-    // 1. Stop Web Audio immediately
     stop();
-
-    // 2. Cancel any in-progress analysis fetch
     const abortFn = window.__karaAbortAnalysis;
     if (typeof abortFn === 'function') {
       abortFn();
       window.__karaAbortAnalysis = null;
     }
-
-    // 3. Clear all song/player state
     useAppStore.setState({
       alignedLyrics: [],
       isPlaying: false,
@@ -336,58 +323,48 @@ function App() {
       albumArt: null,
       syncOffsetMs: 0,
     });
+    navigate('/studio');
+  }, [stop, navigate]);
 
-    // 4. Navigate to homepage
-    setShowStudio(false);
-  }, [stop]);
-
-  // ── Render ────────────────────────────────────────────────────────────────
-  if (showPlayer) {
-    if (isAnalyzing) {
-      return <AnalysisLoadingScreen onCancel={exitPlayer} />;
+  // If no audio buffer and not analyzing, go back to studio
+  React.useEffect(() => {
+    if (!audioBuffer && !isAnalyzing) {
+      navigate('/studio');
     }
+  }, [audioBuffer, isAnalyzing, navigate]);
 
-    // FIX 2: Stage/player view — shown immediately when analysis starts
-    return (
-      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
-        {/* FIX 1 & FIX 3: Player nav with clickable logo + Try another song */}
-        <PlayerNav
-          song={song}
-          artist={artist}
-          onExit={exitPlayer}
-          accuracyScore={accuracyScore}
-        />
-
-        {/* Canvas */}
-        <div style={{ flex: 1, minHeight: 0, padding: '8px 24px 120px', marginTop: 72 }}>
-          <PitchCanvas />
-        </div>
-
-        {/* Player bar */}
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50 }}>
-          <PlaybackControls />
-        </div>
-      </div>
-    );
-  }
-
-  if (showStudio) {
-    return (
-      <StudioSection
-        error={error}
-        isMicActive={isMicActive}
-        setIsMicActive={setIsMicActive}
-        onHome={() => setShowStudio(false)}   // FIX 3: studio logo → home
-      />
-    );
+  if (isAnalyzing) {
+    return <AnalysisLoadingScreen onCancel={exitPlayer} />;
   }
 
   return (
-    <HeroSection
-      onGetStarted={() => setShowStudio(true)}
-      isMicActive={isMicActive}
-      setIsMicActive={setIsMicActive}
-    />
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
+      <PlayerNav
+        song={song}
+        artist={artist}
+        onExit={exitPlayer}
+        accuracyScore={accuracyScore}
+      />
+      <div style={{ flex: 1, minHeight: 0, padding: '8px 24px 120px', marginTop: 72 }}>
+        <PitchCanvas />
+      </div>
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50 }}>
+        <PlaybackControls />
+      </div>
+    </div>
+  );
+}
+
+// ── App root ───────────────────────────────────────────────────────────────
+function App() {
+  useMicPitch();
+
+  return (
+    <Routes>
+      <Route path="/" element={<HeroPage />} />
+      <Route path="/studio" element={<StudioPage />} />
+      <Route path="/player" element={<PlayerPage />} />
+    </Routes>
   );
 }
 
