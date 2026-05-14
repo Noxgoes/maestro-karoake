@@ -2,6 +2,7 @@ import React, { useMemo, useEffect, useRef, useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import { calculateYPercents, generateBezierPath } from '../utils/renderUtils';
 import { getAudioContext } from '../hooks/useAudioPlayer';
+import { useAudioControls } from '../context/AudioPlayerContext';
 
 export default function PitchCanvas() {
   const alignedLyrics = useAppStore(state => state.alignedLyrics);
@@ -18,12 +19,20 @@ export default function PitchCanvas() {
   // ── Mirror play/pause into local refs for RAF loop ──
   const isPlayingRef = useRef(isPlaying);
   const playbackRateRef = useRef(playbackRate);
+  const { seek } = useAudioControls();
+
   useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
   useEffect(() => { playbackRateRef.current = playbackRate; }, [playbackRate]);
 
   // ── Read time directly from AudioContext via RAF ──
   const [currentMs, setCurrentMs] = useState(0);
   const [manualLine, setManualLine] = useState(null); // NULL = auto, index = locked line
+
+  // ── Reset manual focus when song changes ──
+  useEffect(() => {
+    setManualLine(null);
+  }, [alignedLyrics]);
+
   const rafRef = useRef(null);
   const startCtxTime = useRef(0);   // ctx.currentTime when play() was called
   const pauseOffset = useRef(0);   // song-seconds accumulated before this play segment
@@ -217,20 +226,22 @@ export default function PitchCanvas() {
   };
 
   return (
-    <div
-      ref={scrollRef}
-      style={{
-        width: '100%',
-        overflowY: 'auto',
-        background: 'var(--bg)',
-        borderRadius: 'var(--radius-lg)',
-        border: '0.5px solid var(--border-light)',
-        marginTop: 8,
-        position: 'relative',
-        maxHeight: 'calc(100vh - 220px)',
-      }}
-      className="group"
-    >
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <div
+        ref={scrollRef}
+        style={{
+          width: '100%',
+          overflowY: 'auto',
+          background: 'var(--bg)',
+          borderRadius: 'var(--radius-lg)',
+          border: '0.5px solid var(--border-light)',
+          marginTop: 8,
+          position: 'relative',
+          maxHeight: 'calc(100vh - 220px)',
+          scrollBehavior: 'smooth'
+        }}
+        className="group"
+      >
       {/* ── Status strip ── */}
       <div style={{
         position: 'sticky', top: 0, left: 0, right: 0, zIndex: 20,
@@ -396,6 +407,7 @@ export default function PitchCanvas() {
                     onClick={(e) => {
                       e.stopPropagation();
                       setManualLine(Number(line.lineIndex));
+                      seek(line.startMs / 1000);
                     }}
                   >
                     <g
@@ -447,7 +459,9 @@ export default function PitchCanvas() {
         })}
       </svg>
 
-      {/* ── Manual Focus Override Reset ── */}
+      </div>
+
+      {/* ── Manual Focus Override Reset (Autoscroll Button) ── */}
       {manualLine !== null && (
         <button
           id="reset-manual-focus"
@@ -456,31 +470,36 @@ export default function PitchCanvas() {
             setManualLine(null);
           }}
           style={{
-            position: 'sticky',
-            bottom: 24,
-            float: 'right',
-            marginRight: 24,
-            background: 'var(--player-text)',
-            color: 'var(--player-bg)',
+            position: 'absolute',
+            bottom: 40,
+            right: 40,
+            background: 'var(--player-text, #F5F0E8)',
+            color: 'var(--player-bg, #1A1817)',
             border: 'none',
-            borderRadius: 'var(--radius-pill)',
-            padding: '10px 20px',
-            fontSize: '11px',
+            borderRadius: 'var(--radius-pill, 30px)',
+            padding: '12px 24px',
+            fontSize: '12px',
             fontWeight: 800,
             fontFamily: 'Inter, sans-serif',
             cursor: 'pointer',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-            zIndex: 9999,
+            boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
+            zIndex: 100,
             display: 'flex',
             alignItems: 'center',
-            gap: 8,
-            animation: 'fadeInUp 0.3s ease-out forwards',
+            gap: 10,
+            animation: 'fadeInUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
             textTransform: 'uppercase',
-            letterSpacing: '0.06em'
+            letterSpacing: '0.08em',
+            backdropFilter: 'blur(8px)',
           }}
+          title="Resume automatic scrolling"
         >
-          <span>Auto Sync</span>
-          <span style={{ fontSize: 16, lineHeight: 0, marginTop: -1 }}>✕</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="7 13 12 18 17 13"></polyline>
+            <polyline points="7 6 12 11 17 6"></polyline>
+          </svg>
+          <span>Resume Autoscroll</span>
+          <span style={{ fontSize: 16, opacity: 0.5, marginLeft: 4 }}>✕</span>
         </button>
       )}
     </div>
