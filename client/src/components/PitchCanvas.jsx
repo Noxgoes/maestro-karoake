@@ -318,6 +318,19 @@ export default function PitchCanvas() {
           return (
             <g key={`line-${line.lineIndex}`} transform={`translate(0, ${line.yOffset})`}>
 
+              {/* ── Invisible hit-area for the entire line ── */}
+              <rect
+                x={0} y={0} width={svgWidth} height={rowHeight}
+                fill="white"
+                opacity="0"
+                style={{ cursor: 'pointer' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setManualLine(Number(line.lineIndex));
+                  seek(line.startMs / 1000);
+                }}
+              />
+
               {/* ── Active-line highlight band ── */}
               {isLineActive && (
                 <rect
@@ -325,10 +338,9 @@ export default function PitchCanvas() {
                   fill="var(--accent, #7C5CBF)"
                   opacity="0.08"
                   rx="0"
+                  style={{ pointerEvents: 'none' }}
                 />
               )}
-
-              {/* ── Arrows between words ── */}
 
               {/* ── Mic overlay ── */}
               {isMicActive && micPathByLine[line.yOffset] && micPathByLine[line.yOffset].length > 1 && (
@@ -341,6 +353,7 @@ export default function PitchCanvas() {
                   strokeLinejoin="round"
                   opacity="0.6"
                   filter="url(#glow)"
+                  style={{ pointerEvents: 'none' }}
                 />
               )}
 
@@ -372,14 +385,13 @@ export default function PitchCanvas() {
                     strokeWidth={isLineActive ? '2' : '1.5'}
                     opacity={isLineActive ? '0.7' : isLinePast ? '0.25' : '0.35'}
                     markerEnd="url(#arrowhead)"
-                    style={{ transition: 'none' }}
+                    style={{ transition: 'none', pointerEvents: 'none' }}
                   />
                 );
               })}
 
               {/* ── Words ── */}
               {line.words.map((w, i) => {
-                // Colour / size based on LINE state (unified line highlight)
                 const textColor = isLineActive ? '#121212'
                   : isLinePast ? 'rgba(157, 143, 127, 0.25)'
                     : 'rgba(74, 69, 64, 0.4)';
@@ -401,13 +413,7 @@ export default function PitchCanvas() {
                     transform={`translate(${w.x}, ${w.y}) rotate(${rotation})`}
                     style={{
                       transition: 'all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                      cursor: 'pointer',
-                      pointerEvents: 'all'
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setManualLine(Number(line.lineIndex));
-                      seek(line.startMs / 1000);
+                      pointerEvents: 'none'
                     }}
                   >
                     <g
@@ -415,15 +421,8 @@ export default function PitchCanvas() {
                         animation: `fadeInUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards`,
                         animationDelay: `${Math.min(2, w.wordIndex * 0.05)}s`,
                         opacity: 0,
-                        pointerEvents: 'auto'
                       }}
                     >
-                      {/* Transparent hit-box for easier clicking */}
-                      <rect
-                        x="-40" y="-20" width="80" height="40"
-                        fill="transparent"
-                        style={{ cursor: 'pointer' }}
-                      />
                       <text
                         x="0" y="0"
                         textAnchor={i === 0 ? 'start' : i === line.words.length - 1 ? 'end' : 'middle'}
@@ -442,7 +441,6 @@ export default function PitchCanvas() {
                         {w.word}
                       </text>
 
-                      {/* MIDI label only on active line */}
                       {isLineActive && (
                         <text
                           x="0" y="26"
