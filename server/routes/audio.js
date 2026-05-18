@@ -157,6 +157,13 @@ router.post('/extract', async (req, res) => {
     } else if (fs.existsSync(cookiesPath2)) {
       console.log(`[YT-DLP] Using cookies from: ${cookiesPath2}`);
       args.push('--cookies', cookiesPath2);
+    } else {
+      // If no static cookies.txt is provided, and we are running locally (not on Render), read from Chrome browser
+      const isRender = process.env.RENDER === 'true';
+      if (!isRender) {
+        console.log('[YT-DLP] Local development detected. Dynamically reading cookies from Chrome browser profile...');
+        args.push('--cookies-from-browser', 'chrome');
+      }
     }
 
     await ytDlpWrap.execPromise(args);
