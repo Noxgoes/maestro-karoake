@@ -15,6 +15,26 @@ export default function PlaybackControls() {
 
   const { togglePlayback, seek, stop } = useAudioControls();
 
+  const [isFullscreen, setIsFullscreen] = React.useState(!!document.fullscreenElement);
+
+  React.useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
   if (!audioBuffer) return null;
 
   const formatTime = (seconds) => {
@@ -230,6 +250,48 @@ export default function PlaybackControls() {
             </span>
           </div>
         )}
+
+        {/* Fullscreen Toggle */}
+        <button
+          id="player-fullscreen"
+          onClick={toggleFullscreen}
+          title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+          style={{
+            width: 38,
+            height: 38,
+            display: 'flex',
+            alignItems: 'center',
+            justify: 'center',
+            background: 'rgba(255,255,255,0.06)',
+            border: '0.5px solid rgba(255,255,255,0.1)',
+            color: '#F5F0E8',
+            cursor: 'pointer',
+            borderRadius: '50%',
+            transition: 'all 0.2s',
+            marginLeft: accuracyScore === null ? '12px' : '0',
+            outline: 'none',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'var(--player-text)';
+            e.currentTarget.style.color = 'var(--player-bg)';
+            e.currentTarget.style.transform = 'scale(1.05)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+            e.currentTarget.style.color = '#F5F0E8';
+            e.currentTarget.style.transform = 'none';
+          }}
+        >
+          {isFullscreen ? (
+            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          ) : (
+            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          )}
+        </button>
       </div>
     </div>
   );
