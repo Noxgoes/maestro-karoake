@@ -82,16 +82,16 @@ router.get('/info', async (req, res) => {
     });
   } catch (error) {
     const msg = error.message || '';
-    console.error('[YT-INFO ERROR]', msg);
+    console.warn('[YT-INFO WARN] yt-dlp metadata scrape failed, returning graceful fallback:', msg);
     
-    if (msg.includes('429')) {
-      return res.status(429).json({ error: 'YouTube is rate-limiting your IP. Please try again later or use a VPN.' });
-    }
-    if (msg.includes('Sign in')) {
-      return res.status(403).json({ error: 'YouTube bot detection triggered. Try a different video.' });
-    }
-    
-    res.status(500).json({ error: 'Failed to fetch video info' });
+    // Return graceful fallback so the frontend doesn't crash and user can manually set details
+    res.json({
+      title: "YouTube Video",
+      uploader: "Unknown Artist",
+      artist: "Unknown Artist",
+      track: "YouTube Video",
+      source: 'fallback'
+    });
   }
 });
 
