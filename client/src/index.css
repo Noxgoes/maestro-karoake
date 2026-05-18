@@ -696,6 +696,11 @@ h1, h2, h3, .kara-serif {
     display: none !important; /* Hide header search bar on mobile */
   }
 
+  /* Hide background scattered album covers on mobile for focused readability */
+  .album-card {
+    display: none !important;
+  }
+
   .nav-auth .btn-signup {
     padding: 7px 14px !important;
     font-size: 12px !important;
