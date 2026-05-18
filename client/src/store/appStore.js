@@ -37,6 +37,7 @@ export const useAppStore = create((set, get) => ({
   audioFile: null,
   youtubeUrl: '',
   isFetchingYt: false,
+  presetPath: '',
   setAudioSourceTab: (audioSourceTab) => set({ audioSourceTab }),
   setAudioFile: (audioFile) => set({ audioFile }),
   setYoutubeUrl: (youtubeUrl) => set({ youtubeUrl }),

@@ -52,7 +52,29 @@ export async function runAnalysisPipeline({ navigate, extractPitch }) {
     let audioData;
 
     if (audioFile && audioSourceTab === 'upload') {
+      setAnalysisStep('reading-file');
       audioData = await audioFile.arrayBuffer();
+    } else if (audioSourceTab === 'preset') {
+      setAnalysisStep('reading-file');
+      const presetPath = store.presetPath;
+      let response;
+      try {
+        console.log(`[PIPELINE] Attempting to load local preset from: ${presetPath}`);
+        response = await fetch(presetPath);
+        if (!response.ok) throw new Error('Local file not found');
+      } catch (err) {
+        console.log(`[PIPELINE] Local preset not found. Fetching dynamic preview from iTunes API for: ${song}...`);
+        const itunesRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(song + ' ' + (artist || ''))}&limit=1&entity=song`);
+        const itunesData = await itunesRes.json();
+        if (itunesData.results && itunesData.results[0] && itunesData.results[0].previewUrl) {
+          const previewUrl = itunesData.results[0].previewUrl;
+          console.log(`[PIPELINE] iTunes success! Loading audio from preview: ${previewUrl}`);
+          response = await fetch(previewUrl);
+        } else {
+          throw new Error('Local preset file not found. Place it in client/public/presets/ directory.');
+        }
+      }
+      audioData = await response.arrayBuffer();
     } else if (youtubeUrl && audioSourceTab === 'youtube') {
       store.setIsFetchingYt(true);
       const response = await fetch(`${apiUrl}/api/audio/extract`, {

@@ -9,6 +9,8 @@ import { useAppStore } from './store/appStore';
 import { useMicPitch } from './hooks/useMicPitch';
 import { useAudioControls } from './context/AudioPlayerContext';
 import HowToModal from './components/HowToModal';
+import { runAnalysisPipeline } from './utils/analysisPipeline';
+import { usePitchExtraction } from './hooks/usePitchExtraction';
 
 // ── Album card data ────────────────────────────────────────────────────────
 const ALBUM_CARDS = [
@@ -286,6 +288,7 @@ function StudioPage() {
   const navigate = useNavigate();
   const error = useAppStore(state => state.error);
   const setIsHowToOpen = useAppStore(state => state.setIsHowToOpen);
+  const { extractPitch } = usePitchExtraction();
 
   return (
     <>
@@ -312,6 +315,128 @@ function StudioPage() {
           <SearchBar />
           {error && <div className="kara-error" style={{ marginTop: 16 }}>{error}</div>}
           <AudioUploader />
+        </div>
+
+        {/* ── Quick Demo Presets Grid (PRO FIX) ── */}
+        <div className="fade-in-up fade-in-up-d3" style={{ width: '100%', maxWidth: 580, padding: '0 20px', marginTop: -8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 16 }}>
+            <span style={{ color: 'var(--star)', fontSize: 12 }}>✦</span>
+            <p style={{ 
+              fontSize: 11, 
+              color: 'var(--text-muted)', 
+              fontFamily: 'Inter, sans-serif', 
+              fontWeight: 600, 
+              textTransform: 'uppercase', 
+              letterSpacing: '0.08em',
+              margin: 0
+            }}>
+              Try a Quick Demo Track (Dynamic WASM Analysis)
+            </p>
+            <span style={{ color: 'var(--star)', fontSize: 12 }}>✦</span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+            {[
+              { 
+                title: 'Kesariya', 
+                artist: 'Arijit Singh', 
+                cover: 'https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/37/1b/09/371b09fa-7e44-adbf-939e-d309cb9f3f4c/8902894363235_cover.jpg/120x120bb.jpg',
+                preset: 'kesariya.mp3'
+              },
+              { 
+                title: 'Pashmina', 
+                artist: 'Amit Trivedi', 
+                cover: 'https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/b8/1c/b3/b81cb301-8bf8-d621-e034-789a7bb7d5d7/8902894356077_cover.jpg/120x120bb.jpg',
+                preset: 'pashmina.mp3'
+              },
+              { 
+                title: 'Yeh Fitoor Mera', 
+                artist: 'Amit Trivedi', 
+                cover: 'https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/b8/1c/b3/b81cb301-8bf8-d621-e034-789a7bb7d5d7/8902894356077_cover.jpg/120x120bb.jpg',
+                preset: 'yeh_fitoor_mera.mp3'
+              }
+            ].map((track, i) => (
+              <button
+                key={i}
+                onClick={async () => {
+                  useAppStore.setState({
+                    song: track.title,
+                    artist: track.artist,
+                    audioSourceTab: 'preset',
+                    presetPath: `/presets/${track.preset}`,
+                    error: null
+                  });
+                  runAnalysisPipeline({ navigate, extractPitch });
+                }}
+                className="preset-card"
+                style={{
+                  background: 'var(--surface)',
+                  border: '0.5px solid var(--border)',
+                  borderRadius: '16px',
+                  padding: '12px 14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s, border-color 0.2s, box-shadow 0.2s',
+                  outline: 'none',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.borderColor = 'var(--text-primary)';
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.04)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = 'none';
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <img 
+                  src={track.cover} 
+                  alt="" 
+                  style={{ width: 44, height: 44, borderRadius: '8px', objectFit: 'cover' }} 
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ 
+                    fontSize: 13, 
+                    fontWeight: 600, 
+                    margin: 0, 
+                    color: 'var(--text-primary)', 
+                    fontFamily: 'Inter, sans-serif',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}>
+                    {track.title}
+                  </p>
+                  <p style={{ 
+                    fontSize: 11, 
+                    margin: 0, 
+                    color: 'var(--text-muted)',
+                    fontFamily: 'Inter, sans-serif',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}>
+                    {track.artist}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+          
+          <p style={{ 
+            fontSize: 10, 
+            color: 'var(--text-muted)', 
+            fontFamily: 'Inter, sans-serif', 
+            textAlign: 'center',
+            marginTop: 10,
+            opacity: 0.8
+          }}>
+            Tip: You can drop custom audio files in your <code style={{ fontSize: 10, background: 'rgba(0,0,0,0.03)', padding: '2px 4px', borderRadius: 4 }}>client/public/presets/</code> folder named after these songs to load your own full tracks offline!
+          </p>
         </div>
       </div>
     </>
