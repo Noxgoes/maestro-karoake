@@ -12,6 +12,7 @@ export default function PitchCanvas() {
   const pitchHistory = useAppStore(state => state.pitchHistory);
   const isMicActive = useAppStore(state => state.isMicActive);
   const isAnalyzing = useAppStore(state => state.isAnalyzing);
+  const isFullscreen = useAppStore(state => state.isFullscreen);
   const isPlaying = useAppStore(state => state.isPlaying);
   const audioBuffer = useAppStore(state => state.audioBuffer);
   const lastSeekTime = useAppStore(state => state.lastSeekTime);
@@ -243,7 +244,7 @@ export default function PitchCanvas() {
           border: '0.5px solid var(--border-light)',
           marginTop: 8,
           position: 'relative',
-          maxHeight: 'calc(100vh - 180px)',
+          maxHeight: isFullscreen ? 'calc(100vh - 120px)' : 'calc(100vh - 180px)',
           scrollBehavior: isScrolling ? 'auto' : 'smooth'
         }}
         className="group"
@@ -257,7 +258,7 @@ export default function PitchCanvas() {
         />
         {/* ── Status strip ── */}
         <div style={{
-          position: 'sticky', top: 49, left: 0, right: 0, zIndex: 20,
+          position: 'sticky', top: isFullscreen ? 0 : 49, left: 0, right: 0, zIndex: 20,
           display: 'flex', alignItems: 'center', gap: 16,
           padding: '8px 20px',
           background: 'var(--surface)',

@@ -473,6 +473,8 @@ function PlayerPage() {
     navigate('/studio');
   }, [stop, navigate]);
 
+  const isFullscreen = useAppStore(state => state.isFullscreen);
+
   // If no audio buffer and not analyzing, go back to studio
   React.useEffect(() => {
     if (!audioBuffer && !isAnalyzing) {
@@ -485,14 +487,30 @@ function PlayerPage() {
   }
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
-      <PlayerNav
-        song={song}
-        artist={artist}
-        onExit={exitPlayer}
-        accuracyScore={accuracyScore}
-      />
-      <div style={{ flex: 1, minHeight: 0, padding: '8px 24px 120px', marginTop: 72 }}>
+    <div style={{ 
+      height: '100vh', 
+      display: 'flex', 
+      flexDirection: 'column', 
+      background: 'var(--bg)',
+      overflow: 'hidden'
+    }}>
+      {!isFullscreen && (
+        <PlayerNav
+          song={song}
+          artist={artist}
+          onExit={exitPlayer}
+          accuracyScore={accuracyScore}
+        />
+      )}
+      <div style={{ 
+        flex: 1, 
+        minHeight: 0, 
+        padding: isFullscreen ? '24px 24px 120px' : '8px 24px 120px', 
+        marginTop: isFullscreen ? 0 : 72,
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
         <PitchCanvas />
       </div>
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50 }}>

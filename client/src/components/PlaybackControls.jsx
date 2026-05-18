@@ -15,7 +15,8 @@ export default function PlaybackControls() {
 
   const { togglePlayback, seek, stop } = useAudioControls();
 
-  const [isFullscreen, setIsFullscreen] = React.useState(!!document.fullscreenElement);
+  const isFullscreen = useAppStore(state => state.isFullscreen);
+  const setIsFullscreen = useAppStore(state => state.setIsFullscreen);
 
   React.useEffect(() => {
     const handleFullscreenChange = () => {
@@ -23,7 +24,7 @@ export default function PlaybackControls() {
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, []);
+  }, [setIsFullscreen]);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -259,9 +260,11 @@ export default function PlaybackControls() {
           style={{
             width: 38,
             height: 38,
-            display: 'flex',
+            display: 'inline-flex',
             alignItems: 'center',
-            justify: 'center',
+            justifyContent: 'center',
+            padding: 0,
+            lineHeight: 0,
             background: 'rgba(255,255,255,0.06)',
             border: '0.5px solid rgba(255,255,255,0.1)',
             color: '#F5F0E8',

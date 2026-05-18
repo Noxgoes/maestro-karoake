@@ -31,6 +31,8 @@ export const useAppStore = create((set, get) => ({
   micMidi: 0,
   pitchHistory: [], // array of { time, midi }
   accuracyScore: null,
+  isFullscreen: false,
+  setIsFullscreen: (isFullscreen) => set({ isFullscreen }),
   
   // Audio source state for Studio upload/youtube
   audioSourceTab: 'upload',
