@@ -95,9 +95,15 @@ router.get('/', async (req, res) => {
           });
 
           if (Array.isArray(results) && results.length > 0) {
-            // Detect Hindi script
-            const hindiResults = results.filter(r => /[\u0900-\u097F]/.test(r.plainLyrics || r.syncedLyrics || ''));
-            const pool = hindiResults.length > 0 ? hindiResults : results;
+            // First, filter out Southern Indian scripts (Telugu, Tamil, Malayalam, Kannada)
+            // if we are searching for a Hindi/Romanized track, provided non-Southern results exist.
+            const hasSouthernScripts = (text) => /[\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F]/.test(text);
+            const nonSouthernResults = results.filter(r => !hasSouthernScripts(r.plainLyrics || r.syncedLyrics || ''));
+            const basePool = nonSouthernResults.length > 0 ? nonSouthernResults : results;
+
+            // Detect Devanagari Hindi script
+            const hindiResults = basePool.filter(r => /[\u0900-\u097F]/.test(r.plainLyrics || r.syncedLyrics || ''));
+            const pool = hindiResults.length > 0 ? hindiResults : basePool;
 
             const bestMatch = pool
               .filter(r => r.syncedLyrics)
