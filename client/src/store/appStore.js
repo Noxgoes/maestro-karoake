@@ -24,13 +24,25 @@ export const useAppStore = create((set, get) => ({
   syncOffsetMs: 0, // user-adjustable lyric sync nudge (±ms)
   lastSeekTime: 0, // triggered whenever user seek/rewind happens
 
-  // Mic state
+  // Mic & Modal state
   isMicActive: false,
+  isHowToOpen: false,
   micPitch: 0,
   micMidi: 0,
   pitchHistory: [], // array of { time, midi }
   accuracyScore: null,
   
+  // Audio source state for Studio upload/youtube
+  audioSourceTab: 'upload',
+  audioFile: null,
+  youtubeUrl: '',
+  isFetchingYt: false,
+  setAudioSourceTab: (audioSourceTab) => set({ audioSourceTab }),
+  setAudioFile: (audioFile) => set({ audioFile }),
+  setYoutubeUrl: (youtubeUrl) => set({ youtubeUrl }),
+  setIsFetchingYt: (isFetchingYt) => set({ isFetchingYt }),
+  
+  setIsHowToOpen: (isHowToOpen) => set({ isHowToOpen }),
   addToQueue: (song, artist) => set(state => ({ queue: [...state.queue, { song, artist }] })),
   removeFromQueue: (index) => set(state => ({ queue: state.queue.filter((_, i) => i !== index) })),
   

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useMemo } from 'react';
 import { useAppStore } from '../store/appStore';
 
 // Singleton AudioContext shared across the app so AudioBuffers are compatible
@@ -167,5 +167,5 @@ export function useAudioPlayer() {
     }
   }, [isPlaying, audioBuffer, play]);
 
-  return { play, pause, togglePlayback, seek, stop };
+  return useMemo(() => ({ play, pause, togglePlayback, seek, stop }), [play, pause, togglePlayback, seek, stop]);
 }

@@ -8,6 +8,7 @@ import AnalysisLoadingScreen from './components/AnalysisLoadingScreen';
 import { useAppStore } from './store/appStore';
 import { useMicPitch } from './hooks/useMicPitch';
 import { useAudioControls } from './context/AudioPlayerContext';
+import HowToModal from './components/HowToModal';
 
 // ── Album card data ────────────────────────────────────────────────────────
 const ALBUM_CARDS = [
@@ -80,7 +81,7 @@ function KaraLogo({ onClick }) {
 }
 
 // ── Navigation bars ────────────────────────────────────────────────────────
-function HeroNav({ isMicActive, setIsMicActive, onLogoClick }) {
+function HeroNav({ onHowToClick, onLogoClick }) {
   return (
     <nav className="kara-nav">
       <KaraLogo onClick={onLogoClick} />
@@ -94,11 +95,12 @@ function HeroNav({ isMicActive, setIsMicActive, onLogoClick }) {
 
       <div className="nav-auth">
         <button
-          onClick={() => setIsMicActive(!isMicActive)}
-          className={isMicActive ? 'btn-signup' : 'btn-login'}
-          style={isMicActive ? { background: '#1D9E75' } : {}}
+          onClick={onHowToClick}
+          className="btn-login"
+          style={{ display: 'flex', alignItems: 'center', gap: 6 }}
         >
-          {isMicActive ? '🎙 Mic on' : 'Enable Mic'}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          How to use
         </button>
         <button className="btn-login">Log in</button>
         <button className="btn-signup">Sign up</button>
@@ -107,18 +109,19 @@ function HeroNav({ isMicActive, setIsMicActive, onLogoClick }) {
   );
 }
 
-function StudioNav({ isMicActive, setIsMicActive, onHome }) {
+function StudioNav({ onHowToClick, onHome }) {
   return (
     <nav className="kara-nav">
       <KaraLogo onClick={onHome} />
 
       <div className="nav-auth">
         <button
-          onClick={() => setIsMicActive(!isMicActive)}
-          className={isMicActive ? 'btn-signup' : 'btn-login'}
-          style={isMicActive ? { background: '#1D9E75' } : {}}
+          onClick={onHowToClick}
+          className="btn-login"
+          style={{ display: 'flex', alignItems: 'center', gap: 6 }}
         >
-          {isMicActive ? '🎙 Mic on' : 'Enable Mic'}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          How to use
         </button>
       </div>
     </nav>
@@ -154,6 +157,28 @@ function PlayerNav({ song, artist, onExit, accuracyScore }) {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <button
+          onClick={() => useAppStore.setState({ isHowToOpen: true })}
+          style={{
+            padding: '9px 16px',
+            borderRadius: 'var(--radius-pill)',
+            border: '1px solid var(--border)',
+            background: 'var(--surface)',
+            color: 'var(--text-primary)',
+            fontSize: 13,
+            fontFamily: 'Inter, sans-serif',
+            fontWeight: 500,
+            cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 6,
+            transition: 'background 0.2s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#E0D8CC'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; }}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          How to use
+        </button>
+
         {accuracyScore !== null && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,
@@ -200,14 +225,12 @@ function PlayerNav({ song, artist, onExit, accuracyScore }) {
 
 function HeroPage() {
   const navigate = useNavigate();
-  const isMicActive = useAppStore(state => state.isMicActive);
-  const setIsMicActive = useAppStore(state => state.setIsMicActive);
+  const setIsHowToOpen = useAppStore(state => state.setIsHowToOpen);
 
   return (
     <>
       <HeroNav 
-        isMicActive={isMicActive} 
-        setIsMicActive={setIsMicActive} 
+        onHowToClick={() => setIsHowToOpen(true)}
         onLogoClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
       />
       <section className="kara-hero" aria-label="Hero">
@@ -262,12 +285,11 @@ function HeroPage() {
 function StudioPage() {
   const navigate = useNavigate();
   const error = useAppStore(state => state.error);
-  const isMicActive = useAppStore(state => state.isMicActive);
-  const setIsMicActive = useAppStore(state => state.setIsMicActive);
+  const setIsHowToOpen = useAppStore(state => state.setIsHowToOpen);
 
   return (
     <>
-      <StudioNav isMicActive={isMicActive} setIsMicActive={setIsMicActive} onHome={() => navigate('/')} />
+      <StudioNav onHowToClick={() => setIsHowToOpen(true)} onHome={() => navigate('/')} />
       <div style={{
         minHeight: '100vh', paddingTop: '90px', paddingBottom: '60px',
         background: 'var(--bg)', display: 'flex', flexDirection: 'column',
@@ -358,13 +380,41 @@ function PlayerPage() {
 // ── App root ───────────────────────────────────────────────────────────────
 function App() {
   useMicPitch();
+  const location = useLocation();
+  const { stop } = useAudioControls();
+
+  // Robustly stop audio and reset state whenever navigating away from the player (e.g. browser Back button)
+  React.useEffect(() => {
+    if (location.pathname !== '/player') {
+      stop();
+      const abortFn = window.__karaAbortAnalysis;
+      if (typeof abortFn === 'function') {
+        abortFn();
+        window.__karaAbortAnalysis = null;
+      }
+      useAppStore.setState({
+        alignedLyrics: [],
+        isPlaying: false,
+        audioBuffer: null,
+        isAnalyzing: false,
+        showPlayer: false,
+        analysisStep: '',
+        currentTime: 0,
+        albumArt: null,
+        syncOffsetMs: 0,
+      });
+    }
+  }, [location.pathname, stop]);
 
   return (
-    <Routes>
-      <Route path="/" element={<HeroPage />} />
-      <Route path="/studio" element={<StudioPage />} />
-      <Route path="/player" element={<PlayerPage />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={<HeroPage />} />
+        <Route path="/studio" element={<StudioPage />} />
+        <Route path="/player" element={<PlayerPage />} />
+      </Routes>
+      <HowToModal />
+    </>
   );
 }
 

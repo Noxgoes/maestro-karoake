@@ -1,41 +1,27 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/appStore';
+import { usePitchExtraction } from '../hooks/usePitchExtraction';
+import { runAnalysisPipeline } from '../utils/analysisPipeline';
 
 export default function SearchBar() {
+  const navigate = useNavigate();
+  const { extractPitch } = usePitchExtraction();
+
   const [loading, setLoading] = useState(false);
   const song = useAppStore(state => state.song);
   const artist = useAppStore(state => state.artist);
   const setSong = useAppStore(state => state.setSong);
   const setArtist = useAppStore(state => state.setArtist);
-  const setLyrics = useAppStore(state => state.setLyrics);
   const setError = useAppStore(state => state.setError);
   const queue = useAppStore(state => state.queue);
   const addToQueue = useAppStore(state => state.addToQueue);
   const removeFromQueue = useAppStore(state => state.removeFromQueue);
 
-  const performSearch = async (songName, artistName) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(
-        `http://localhost:3001/api/lyrics?q=${encodeURIComponent(songName)}&artist=${encodeURIComponent(artistName)}`
-      );
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to fetch lyrics');
-      setLyrics(data); 
-      return data.lyrics;
-    } catch (err) {
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSearch = (e) => {
     e.preventDefault();
     if (!song) return;
-    performSearch(song, artist);
+    runAnalysisPipeline({ navigate, extractPitch });
   };
 
   const handleQueueAdd = (e) => {
@@ -51,36 +37,42 @@ export default function SearchBar() {
       <form onSubmit={handleSearch} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {/* Inputs row */}
         <div style={{ display: 'flex', gap: 10 }}>
-          <div style={{ position: 'relative', flex: 1 }}>
-            <svg
-              width="16" height="16" fill="none" stroke="var(--text-muted)" strokeWidth="2"
-              viewBox="0 0 24 24"
-              style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
-            >
-              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-            </svg>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'Inter, sans-serif', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.07em', paddingLeft: 4 }}>Song</label>
+            <div style={{ position: 'relative', width: '100%' }}>
+              <svg
+                width="16" height="16" fill="none" stroke="var(--text-muted)" strokeWidth="2"
+                viewBox="0 0 24 24"
+                style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
+              >
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+              </svg>
+              <input
+                id="search-song"
+                type="text"
+                placeholder="Song Title (e.g. Kesariya)"
+                className="kara-input"
+                style={{ paddingLeft: 38, width: '100%' }}
+                value={song}
+                onChange={e => setSong(e.target.value)}
+                required
+                autoComplete="off"
+              />
+            </div>
+          </div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'Inter, sans-serif', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.07em', paddingLeft: 4 }}>Artist</label>
             <input
-              id="search-song"
+              id="search-artist"
               type="text"
-              placeholder="Song Title (e.g. Kesariya)"
+              placeholder="Singer / Artist (e.g. Arijit Singh)"
               className="kara-input"
-              style={{ paddingLeft: 38 }}
-              value={song}
-              onChange={e => setSong(e.target.value)}
-              required
+              style={{ width: '100%' }}
+              value={artist}
+              onChange={e => setArtist(e.target.value)}
               autoComplete="off"
             />
           </div>
-          <input
-            id="search-artist"
-            type="text"
-            placeholder="Singer / Artist (e.g. Arijit Singh)"
-            className="kara-input"
-            style={{ flex: 1 }}
-            value={artist}
-            onChange={e => setArtist(e.target.value)}
-            autoComplete="off"
-          />
         </div>
 
         {/* Button row */}
@@ -105,10 +97,10 @@ export default function SearchBar() {
                     borderRadius: '50%', display: 'inline-block', animation: 'spin 0.7s linear infinite',
                   }}
                 />
-                Fetching…
+                Analyzing…
               </>
             ) : (
-              <>Find lyrics →</>
+              <>Extract & Analyze →</>
             )}
           </button>
         </div>
@@ -131,7 +123,12 @@ export default function SearchBar() {
                 </span>
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button
-                    onClick={() => { performSearch(item.song, item.artist); removeFromQueue(idx); }}
+                    onClick={() => {
+                      setSong(item.song);
+                      setArtist(item.artist);
+                      runAnalysisPipeline({ navigate, extractPitch });
+                      removeFromQueue(idx);
+                    }}
                     style={{
                       background: 'var(--surface)',
                       border: '0.5px solid var(--border)',

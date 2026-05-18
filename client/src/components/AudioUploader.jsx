@@ -1,36 +1,25 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { usePitchExtraction } from '../hooks/usePitchExtraction';
 import { useAppStore } from '../store/appStore';
 import { extractAudioMetadata } from '../utils/metadataUtils';
-import { getAudioContext } from '../hooks/useAudioPlayer';
-
-// Module-level abort controller — exposed on window so App.jsx exitPlayer() can cancel it
-let _abortController = null;
 
 export default function AudioUploader() {
-  const navigate = useNavigate();
-  const [tab, setTab] = useState('upload');
-  const [file, setFile] = useState(null);
-  const [ytUrl, setYtUrl] = useState('');
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-  const [isFetchingYt, setIsFetchingYt] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-  const { extractPitch, progress } = usePitchExtraction();
-  const isAnalyzing  = useAppStore(state => state.isAnalyzing);
-  const analysisStep = useAppStore(state => state.analysisStep);
-  const song         = useAppStore(state => state.song);
-  const artist       = useAppStore(state => state.artist);
-  const setSong      = useAppStore(state => state.setSong);
-  const setArtist    = useAppStore(state => state.setArtist);
-  const lyrics       = useAppStore(state => state.lyrics);
-  const setLyrics    = useAppStore(state => state.setLyrics);
-  const setAnalysisStep = useAppStore(state => state.setAnalysisStep);
-  const setError     = useAppStore(state => state.setError);
-  const setAudioBuffer  = useAppStore(state => state.setAudioBuffer);
-  const setIsAnalyzing  = useAppStore(state => state.setIsAnalyzing);
+  const tab = useAppStore(state => state.audioSourceTab);
+  const setTab = useAppStore(state => state.setAudioSourceTab);
+  const file = useAppStore(state => state.audioFile);
+  const setFile = useAppStore(state => state.setAudioFile);
+  const ytUrl = useAppStore(state => state.youtubeUrl);
+  const setYtUrl = useAppStore(state => state.setYoutubeUrl);
+  const isFetchingYt = useAppStore(state => state.isFetchingYt);
+
+  const isAnalyzing = useAppStore(state => state.isAnalyzing);
+  const setSong = useAppStore(state => state.setSong);
+  const setArtist = useAppStore(state => state.setArtist);
+  const lyrics = useAppStore(state => state.lyrics);
+  const setError = useAppStore(state => state.setError);
 
   useEffect(() => {
     if (file && tab === 'upload') {
@@ -43,9 +32,8 @@ export default function AudioUploader() {
     }
   }, [file, tab, setSong, setArtist]);
 
-  // ── YouTube Metadata Auto-fetch ──
   useEffect(() => {
-    if (ytUrl && ytUrl.includes('youtube.com') || ytUrl.includes('youtu.be')) {
+    if (ytUrl && (ytUrl.includes('youtube.com') || ytUrl.includes('youtu.be'))) {
       const fetchYtInfo = async () => {
         try {
           const res = await fetch(`${apiUrl}/api/audio/info?url=${encodeURIComponent(ytUrl)}`);
@@ -60,19 +48,7 @@ export default function AudioUploader() {
       const timer = setTimeout(fetchYtInfo, 800);
       return () => clearTimeout(timer);
     }
-  }, [ytUrl, setSong, setArtist]);
-
-  const performLyricsFetch = async (currentSong, currentArtist, duration, signal) => {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-    setAnalysisStep('fetching-lyrics');
-    let url = `${apiUrl}/api/lyrics?q=${encodeURIComponent(currentSong)}&artist=${encodeURIComponent(currentArtist || '')}`;
-    if (duration) url += `&duration=${Math.round(duration)}`;
-    const response = await fetch(url, { signal });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Failed to fetch lyrics');
-    setLyrics(data.lyrics);
-    return data.lyrics;
-  };
+  }, [ytUrl, setSong, setArtist, apiUrl]);
 
   const handleFileChange = (e) => {
     const selected = e.target.files[0];
@@ -91,112 +67,6 @@ export default function AudioUploader() {
     if (dropped && dropped.type.startsWith('audio/')) {
       setFile(dropped);
       setError(null);
-    }
-  };
-
-  const analyzeSong = async (audioData) => {
-    _abortController = new AbortController();
-    window.__karaAbortAnalysis = () => _abortController?.abort();
-    const signal = _abortController.signal;
-
-    try {
-      setError(null);
-      const currentSong   = song;
-      const currentArtist = artist;
-
-      if (!currentSong) throw new Error('Could not identify song. Please enter title manually.');
-
-      useAppStore.getState().setSyncOffsetMs(0);
-
-      // ── Navigate to player page IMMEDIATELY — before any fetch ──
-      setIsAnalyzing(true); 
-      navigate('/player');
-      
-      useAppStore.getState().setAlbumArt(null);
-
-      // 1. Decode audio FIRST
-      setAnalysisStep('extracting-pitch');
-      const audioContext = getAudioContext();
-      if (audioContext.state === 'suspended') await audioContext.resume();
-      const audioBuffer = await audioContext.decodeAudioData(audioData);
-      setAudioBuffer(audioBuffer);
-
-      // 2. Fetch lyrics and metadata concurrently
-      setAnalysisStep('fetching-lyrics');
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-      const query = `${currentSong} ${currentArtist || ''}`.trim();
-      const metadataPromise = fetch(`${apiUrl}/api/metadata?q=${encodeURIComponent(query)}`, { signal })
-        .then(res => res.json())
-        .then(data => {
-          if (data.results && data.results[0]) {
-            useAppStore.getState().setAlbumArt(data.results[0].artworkUrl100.replace('100x100bb', '600x600bb'));
-          }
-        })
-        .catch(() => {});
-
-      const lyricsPromise = performLyricsFetch(currentSong, currentArtist, audioBuffer.duration, signal).then(data => {
-        console.log(`%c[LYRIC SOURCE] Lyrics retrieved from: ${data.source || 'Unknown'}`, 'color: #7c3aed; font-weight: bold; background: #f3f0ff; padding: 2px 6px; border-radius: 4px;');
-        return data;
-      });
-      
-      await Promise.all([metadataPromise, lyricsPromise]);
-
-      // 3. Extract pitch & align
-      setAnalysisStep('extracting-pitch');
-      await extractPitch(audioBuffer);
-
-      setAnalysisStep('complete');
-      useAppStore.getState().setIsPlaying(true);
-    } catch (err) {
-      if (err.name === 'AbortError') return;
-      console.error('Analysis pipeline failed:', err);
-      setError(err.message);
-      setAnalysisStep('');
-      navigate('/studio');
-    } finally {
-      _abortController = null;
-      window.__karaAbortAnalysis = null;
-      setIsAnalyzing(false);
-    }
-  };
-
-  const handleAnalyzeUpload = async () => {
-    if (!file) return;
-    const arrayBuffer = await file.arrayBuffer();
-    await analyzeSong(arrayBuffer);
-  };
-
-  const handleAnalyzeYoutube = async () => {
-    if (!ytUrl) return;
-    setIsFetchingYt(true);
-
-    _abortController = new AbortController();
-    window.__karaAbortAnalysis = () => _abortController?.abort();
-    const signal = _abortController.signal;
-
-    try {
-      setIsAnalyzing(true);
-      navigate('/player');
-      setAnalysisStep('extracting-pitch');
-
-      const response = await fetch('http://localhost:3001/api/audio/extract', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: ytUrl }),
-        signal,
-      });
-      if (!response.ok) throw new Error('Failed to fetch audio from YouTube');
-      const arrayBuffer = await response.arrayBuffer();
-      await analyzeSong(arrayBuffer);
-    } catch (err) {
-      if (err.name === 'AbortError') return;
-      console.error(err);
-      setError(err.message);
-    } finally {
-      setIsFetchingYt(false);
-      _abortController = null;
-      window.__karaAbortAnalysis = null;
-      setIsAnalyzing(false);
     }
   };
 
@@ -267,46 +137,6 @@ export default function AudioUploader() {
               title="Remove file"
             >×</button>
           </div>
-
-          {!isAnalyzing && (
-            <div style={{ display: 'flex', gap: 10, width: '100%', maxWidth: 360 }}>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'Inter, sans-serif', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.07em', paddingLeft: 4 }}>Song</label>
-                <input
-                  type="text"
-                  value={song}
-                  onChange={e => setSong(e.target.value)}
-                  className="kara-input"
-                  style={{ height: 38, fontSize: 13 }}
-                  placeholder="Song title"
-                />
-              </div>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'Inter, sans-serif', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.07em', paddingLeft: 4 }}>Artist</label>
-                <input
-                  type="text"
-                  value={artist}
-                  onChange={e => setArtist(e.target.value)}
-                  className="kara-input"
-                  style={{ height: 38, fontSize: 13 }}
-                  placeholder="Artist"
-                />
-              </div>
-            </div>
-          )}
-
-          {!isAnalyzing ? (
-            <button
-              id="analyze-btn"
-              onClick={handleAnalyzeUpload}
-              className="btn-cta"
-              style={{ fontSize: 15, padding: '13px 36px' }}
-            >
-              Analyze pitch →
-            </button>
-          ) : (
-            <AnalyzeProgress progress={progress} step={analysisStep} />
-          )}
         </div>
       )}
     </>
@@ -349,48 +179,7 @@ export default function AudioUploader() {
         />
       </div>
 
-      {!isAnalyzing && !isFetchingYt && (
-        <div style={{ display: 'flex', gap: 10, width: '100%', maxWidth: 360 }}>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'Inter, sans-serif', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.07em', paddingLeft: 4 }}>Song</label>
-            <input
-              type="text"
-              value={song}
-              onChange={e => setSong(e.target.value)}
-              className="kara-input"
-              style={{ height: 38, fontSize: 13 }}
-              placeholder="Song title"
-            />
-          </div>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'Inter, sans-serif', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.07em', paddingLeft: 4 }}>Artist</label>
-            <input
-              type="text"
-              value={artist}
-              onChange={e => setArtist(e.target.value)}
-              className="kara-input"
-              style={{ height: 38, fontSize: 13 }}
-              placeholder="Artist"
-            />
-          </div>
-        </div>
-      )}
-
-      {!isAnalyzing && !isFetchingYt ? (
-        <button
-          onClick={handleAnalyzeYoutube}
-          disabled={!song || !ytUrl}
-          className="btn-cta"
-          style={{
-            fontSize: 14,
-            padding: '12px 30px',
-            opacity: (!song || !ytUrl) ? 0.5 : 1,
-            cursor: (!song || !ytUrl) ? 'not-allowed' : 'pointer',
-          }}
-        >
-          Extract &amp; analyze →
-        </button>
-      ) : isFetchingYt ? (
+      {isFetchingYt && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontFamily: 'Inter, sans-serif', fontSize: 13 }}>
           <span style={{
             width: 16, height: 16, border: '2px solid var(--border)', borderTopColor: 'var(--text-primary)',
@@ -398,8 +187,6 @@ export default function AudioUploader() {
           }} />
           Downloading audio…
         </div>
-      ) : (
-        <AnalyzeProgress progress={progress} step={analysisStep} />
       )}
     </div>
   );
@@ -434,44 +221,9 @@ export default function AudioUploader() {
         alignItems: 'center',
       }}>
         {tab === 'upload' ? renderUploadTab() : renderYoutubeTab()}
-
-        {lyrics.length === 0 && !isAnalyzing && !isFetchingYt && (
-          <p style={{ marginTop: 16, fontSize: 12, color: 'var(--text-muted)', fontFamily: 'Inter, sans-serif', textAlign: 'center' }}>
-            Lyrics and pitch map will be generated automatically upon analysis.
-          </p>
-        )}
       </div>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
-  );
-}
-
-function AnalyzeProgress({ progress, step }) {
-  const stepMessages = {
-    'fetching-lyrics': 'Fetching lyrics…',
-    'extracting-pitch': 'Analyzing vocal pitch…',
-    'aligning': 'Aligning words to melody…',
-    'complete': 'Analysis complete!',
-  };
-
-  return (
-    <div style={{ width: '100%', maxWidth: 320, display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-muted)', fontFamily: 'Inter, sans-serif' }}>
-          <span style={{
-            width: 14, height: 14, border: '2px solid var(--border)', borderTopColor: 'var(--text-primary)',
-            borderRadius: '50%', display: 'inline-block', animation: 'spin 0.7s linear infinite', flexShrink: 0,
-          }} />
-          {stepMessages[step] || 'Processing…'}
-        </div>
-        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', fontFamily: 'Inter, sans-serif' }}>
-          {Math.round(progress)}%
-        </span>
-      </div>
-      <div className="analyze-progress-track">
-        <div className="analyze-progress-fill" style={{ width: `${progress}%` }} />
-      </div>
     </div>
   );
 }

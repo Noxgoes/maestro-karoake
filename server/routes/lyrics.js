@@ -41,15 +41,39 @@ router.get('/', async (req, res) => {
     let plainLyricsFallback = null;
     try {
       // ── METADATA CLEANING ──
-      // Genius often returns "Song Title (Romanized)" or "Artist - Song Title"
-      // We clean this up to help LRCLIB find it.
-      const cleanTitle = officialTitle
-        .replace(/\(Romanized\)/gi, '')
-        .replace(/\[.*\]/g, '')
-        .split(' - ').pop() // Handle "Artist - Title" formats
+      // Clean up brackets, parentheses, and split by hyphens safely
+      let cleanTitle = officialTitle
+        .replace(/\(.*?\)/g, '') // Remove parentheses content like (From "Fitoor") or (feat. Rihanna)
+        .replace(/\[.*?\]/g, '') // Remove bracket content
         .trim();
+
+      // Handle common hyphen formats ("Artist - Title" vs "Title - Album/Metadata")
+      if (cleanTitle.includes(' - ')) {
+        const parts = cleanTitle.split(' - ').map(p => p.trim()).filter(Boolean);
+        const artistLower = (officialArtist || artist || '').toLowerCase().trim();
         
-      const cleanArtist = (officialArtist === 'Genius Romanizations') ? (artist || '') : officialArtist;
+        if (parts.length > 1) {
+          // If the first part matches the artist name, the actual song title is the second part
+          if (parts[0].toLowerCase() === artistLower || artistLower.includes(parts[0].toLowerCase())) {
+            cleanTitle = parts[1];
+          } else {
+            // Otherwise, the first part is the song title (e.g. "Pashmina - Fitoor")
+            cleanTitle = parts[0];
+          }
+        }
+      }
+
+      // Strip common features / collaborations from title for a clean match
+      cleanTitle = cleanTitle
+        .replace(/\b(feat|ft|featuring|with)\b.*$/i, '') // Strips "feat. Rihanna", "ft. Rihanna", "with Rihanna"
+        .trim();
+
+      // If cleaning left us with an empty or too short title, fall back to the original Genius title stripped of wrappers
+      if (!cleanTitle || cleanTitle.length < 2) {
+        cleanTitle = officialTitle.replace(/\(.*?\)/g, '').replace(/\[.*?\]/g, '').trim();
+      }
+        
+      const cleanArtist = !officialArtist ? (artist || '') : officialArtist;
 
       const searchSteps = [
         { q: `${cleanTitle} ${cleanArtist}`.trim(), label: 'Cleaned Metadata' },
@@ -91,7 +115,7 @@ router.get('/', async (req, res) => {
               plainLyricsFallback = bestMatch.plainLyrics;
               
               // Sync official metadata back if it was messy
-              if (officialArtist === 'Genius Romanizations' || !officialArtist) officialArtist = bestMatch.artistName;
+              if (!officialArtist) officialArtist = bestMatch.artistName;
               if (officialTitle.includes('-') || officialTitle.includes('(')) officialTitle = bestMatch.trackName;
               
               console.log(`[LRCLIB] ✓ Success with ${step.label}: "${bestMatch.trackName}"`);

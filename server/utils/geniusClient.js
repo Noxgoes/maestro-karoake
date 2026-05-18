@@ -151,20 +151,7 @@ function parseToWordArray(rawLyrics) {
 }
 
 
-function isAlreadyRomanScript(text) {
-  if (!text) return true;
-  // Regex to match characters typically NOT found in English/European languages
-  // Specifically targets Devanagari (Hindi), Japanese, Chinese, Cyrillic, etc.
-  const nonRomanMatch = text.match(/[^\x00-\x7F\u00C0-\u00FF\u0100-\u017F\u0180-\u024F\s\p{P}]/gu);
-  if (!nonRomanMatch) return true; 
-  
-  // If fewer than 5% of the characters are non-Roman, consider it already Romanized
-  // (This accounts for small amounts of non-ASCII symbols or metadata)
-  return (nonRomanMatch.length / text.length) < 0.05;
-}
-
 export async function fetchLyrics(song, artist) {
-  // Always fetch original first to check script
   let originalResult = await searchGenius(`${song} ${artist}`);
   const originalRaw = originalResult ? await scrapeLyricsPage(originalResult.url) : null;
   if (!originalRaw) throw new Error('Genius scraping blocked or failed');
@@ -172,28 +159,12 @@ export async function fetchLyrics(song, artist) {
   const officialArtist = originalResult?.primary_artist?.name || artist;
   const officialTitle = originalResult?.title || song;
 
-  // ── SCRIPT GATE ──
-  // If original is already English/Roman, we skip the romanized search entirely
-  const alreadyRomanized = isAlreadyRomanScript(originalRaw);
-  
-  let romanizedRaw = '';
-  if (!alreadyRomanized) {
-    console.log(`[Genius] Non-Roman script detected. Fetching romanized fallback...`);
-    let romanizedResult = await searchGenius(`${song} ${artist} romanized`);
-    if (romanizedResult && romanizedResult.url !== originalResult?.url) {
-      romanizedRaw = await scrapeLyricsPage(romanizedResult.url);
-    }
-  } else {
-    console.log(`[Genius] Lyrics are already in Roman script. Skipping romanization.`);
-  }
-
-  if (!originalRaw && !romanizedRaw) {
-    return { original: [], romanized: [], officialArtist, officialTitle };
+  if (!originalRaw) {
+    return { original: [], officialArtist, officialTitle };
   }
 
   return {
     original: parseToWordArray(originalRaw),
-    romanized: parseToWordArray(romanizedRaw),
     officialArtist,
     officialTitle
   };

@@ -3,6 +3,8 @@ import { useAppStore } from '../store/appStore';
 import { calculateYPercents, generateBezierPath } from '../utils/renderUtils';
 import { getAudioContext } from '../hooks/useAudioPlayer';
 import { useAudioControls } from '../context/AudioPlayerContext';
+import { useAutoscroll } from '../hooks/useAutoscroll';
+import AutoscrollBar from './AutoscrollBar';
 
 export default function PitchCanvas() {
   const alignedLyrics = useAppStore(state => state.alignedLyrics);
@@ -15,6 +17,7 @@ export default function PitchCanvas() {
   const lastSeekTime = useAppStore(state => state.lastSeekTime);
   const playbackRate = useAppStore(state => state.playbackRate);
   const scrollRef = useRef(null);
+  const { isScrolling, speed, setSpeed, toggle, reset } = useAutoscroll(scrollRef, isPlaying);
 
   // ── Mirror play/pause into local refs for RAF loop ──
   const isPlayingRef = useRef(isPlaying);
@@ -92,8 +95,8 @@ export default function PitchCanvas() {
   }, [syncOffsetMs]); // Re-run ensures instant snap on sync change
 
   const MIN_WORD_SPACING = 160;
-  const rowHeight = 320;
-  const padding = 60;
+  const rowHeight = 220;
+  const padding = 20;
   const hPad = 180; // Increased for ironclad clipping protection
 
   // ── Build per-line layout data ─────────────────────────────────────────────
@@ -125,7 +128,7 @@ export default function PitchCanvas() {
           ? hPad + (i / (words.length - 1)) * (_svgWidth - hPad * 2)
           : _svgWidth / 2; // Center if only one word
         const usableHeight = rowHeight - padding * 2;
-        // Increased from 1.15 to 1.8 for more dramatic ups/downs
+        // Adjusted to 1.8 for highly prominent, dramatic vertical pitch contours
         const sensitiveYPercent = 50 + (w.yPercent - 50) * 1.8;
         const y = padding + (Math.min(Math.max(sensitiveYPercent, 0), 100) / 100) * usableHeight;
         return { ...w, x, y };
@@ -141,17 +144,7 @@ export default function PitchCanvas() {
     return { linesData: _linesData, minMidi: _minMidi, maxMidi: _maxMidi, svgWidth: _svgWidth };
   }, [alignedLyrics]);
 
-  if (isAnalyzing) {
-    return <LyricsSkeleton />;
-  }
 
-  if (!alignedLyrics || alignedLyrics.length === 0) {
-    return (
-      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-        <p style={{ fontSize: '1.2rem', fontWeight: 500 }}>No lyrics found for this song.</p>
-      </div>
-    );
-  }
 
   // ── FIX 4: Correct gap fallback ───────────────────────────────────────────
   // During a gap between lines, highlight the LAST completed line (not the next one).
@@ -169,6 +162,7 @@ export default function PitchCanvas() {
 
   // ── Auto-scroll: keep active line centred ─────────────────────────────────
   useEffect(() => {
+    if (isScrolling) return; // Don't fight the continuous autoscroller
     if (!scrollRef.current || !activeLine) return;
     const container = scrollRef.current;
     const viewportH = container.clientHeight;
@@ -185,7 +179,7 @@ export default function PitchCanvas() {
       top: Math.max(0, scrollTarget),
       behavior: manualLine !== null ? 'instant' : 'smooth' // Snappier when manually clicking
     });
-  }, [activeLine?.lineIndex, manualLine]);
+  }, [activeLine?.lineIndex, manualLine, isScrolling]);
 
   // ── Mic overlay helpers ───────────────────────────────────────────────────
   const getCoordinates = (timeMs, midi) => {
@@ -196,7 +190,7 @@ export default function PitchCanvas() {
     const x = hPad + progress * (svgWidth - hPad * 2);
     const pitchRange = Math.max(1, maxMidi - minMidi);
     const yPercent = (maxMidi - midi) / pitchRange;
-    const sensitiveYPercent = 0.5 + (yPercent - 0.5) * 1.15;
+    const sensitiveYPercent = 0.5 + (yPercent - 0.5) * 1.8;
     const usableHeight = rowHeight - padding * 2;
     const y = padding + Math.min(Math.max(sensitiveYPercent, 0), 1) * usableHeight;
     return { x, y: y + line.yOffset, rawY: y, lineOffset: line.yOffset };
@@ -225,6 +219,18 @@ export default function PitchCanvas() {
     document.body.appendChild(link); link.click(); document.body.removeChild(link);
   };
 
+  if (isAnalyzing) {
+    return <LyricsSkeleton />;
+  }
+
+  if (!alignedLyrics || alignedLyrics.length === 0) {
+    return (
+      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+        <p style={{ fontSize: '1.2rem', fontWeight: 500 }}>No lyrics found for this song.</p>
+      </div>
+    );
+  }
+
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <div
@@ -237,37 +243,44 @@ export default function PitchCanvas() {
           border: '0.5px solid var(--border-light)',
           marginTop: 8,
           position: 'relative',
-          maxHeight: 'calc(100vh - 220px)',
-          scrollBehavior: 'smooth'
+          maxHeight: 'calc(100vh - 180px)',
+          scrollBehavior: isScrolling ? 'auto' : 'smooth'
         }}
         className="group"
       >
-      {/* ── Status strip ── */}
-      <div style={{
-        position: 'sticky', top: 0, left: 0, right: 0, zIndex: 20,
-        display: 'flex', alignItems: 'center', gap: 16,
-        padding: '8px 20px',
-        background: 'var(--surface)',
-        borderBottom: '0.5px solid var(--border-light)',
-        fontSize: 11, fontFamily: 'monospace',
-      }}>
-        <span style={{ color: 'var(--text-muted)' }}>t={(currentMs / 1000).toFixed(2)}s</span>
-        {activeLine ? (
-          <>
-            <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>
-              {activeLine.words.map(w => w.word).join(' ')}
-            </span>
-            <span style={{ color: 'var(--text-muted)' }}>
-              {(activeLine.startMs / 1000).toFixed(2)}s – {(activeLine.endMs / 1000).toFixed(2)}s
-            </span>
-          </>
-        ) : (
-          <span style={{ color: 'var(--border)' }}>—</span>
-        )}
-        <span style={{ marginLeft: 'auto', color: 'var(--border)' }}>
-          {alignedLyrics.length} words · {linesData.length} lines
-        </span>
-      </div>
+        <AutoscrollBar
+          isScrolling={isScrolling}
+          speed={speed}
+          setSpeed={setSpeed}
+          toggle={toggle}
+          reset={reset}
+        />
+        {/* ── Status strip ── */}
+        <div style={{
+          position: 'sticky', top: 49, left: 0, right: 0, zIndex: 20,
+          display: 'flex', alignItems: 'center', gap: 16,
+          padding: '8px 20px',
+          background: 'var(--surface)',
+          borderBottom: '0.5px solid var(--border-light)',
+          fontSize: 11, fontFamily: 'monospace',
+        }}>
+          <span style={{ color: 'var(--text-muted)' }}>t={(currentMs / 1000).toFixed(2)}s</span>
+          {activeLine ? (
+            <>
+              <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>
+                {activeLine.words.map(w => w.word).join(' ')}
+              </span>
+              <span style={{ color: 'var(--text-muted)' }}>
+                {(activeLine.startMs / 1000).toFixed(2)}s – {(activeLine.endMs / 1000).toFixed(2)}s
+              </span>
+            </>
+          ) : (
+            <span style={{ color: 'var(--border)' }}>—</span>
+          )}
+          <span style={{ marginLeft: 'auto', color: 'var(--border)' }}>
+            {alignedLyrics.length} words · {linesData.length} lines
+          </span>
+        </div>
 
       <button
         onClick={handleExportSVG}
@@ -330,17 +343,6 @@ export default function PitchCanvas() {
                 }}
               />
 
-              {/* ── Active-line highlight band ── */}
-              {isLineActive && (
-                <rect
-                  x={0} y={0} width={svgWidth} height={rowHeight}
-                  fill="var(--accent, #7C5CBF)"
-                  opacity="0.08"
-                  rx="0"
-                  style={{ pointerEvents: 'none' }}
-                />
-              )}
-
               {/* ── Mic overlay ── */}
               {isMicActive && micPathByLine[line.yOffset] && micPathByLine[line.yOffset].length > 1 && (
                 <path
@@ -370,19 +372,14 @@ export default function PitchCanvas() {
                 const y1 = w.y + Math.sin(angle) * offset;
                 const x2 = next.x - Math.cos(angle) * offset;
                 const y2 = next.y - Math.sin(angle) * offset;
-                const pitchDir = next.midiNote > w.midiNote ? 'up' : next.midiNote < w.midiNote ? 'down' : 'flat';
-                const arrowColor = isLineActive
-                  ? '#121212'
-                  : pitchDir === 'up' ? 'var(--pitch-up)'
-                    : pitchDir === 'down' ? 'var(--pitch-down)'
-                      : 'var(--pitch-flat)';
+                const arrowColor = '#121212';
                 return (
                   <line
                     key={`arrow-${w.wordIndex}`}
                     x1={x1} y1={y1} x2={x2} y2={y2}
                     stroke={arrowColor}
-                    strokeWidth={isLineActive ? '2' : '1.5'}
-                    opacity={isLineActive ? '0.7' : isLinePast ? '0.25' : '0.35'}
+                    strokeWidth="1.5"
+                    opacity="0.4"
                     markerEnd="url(#arrowhead)"
                     style={{ transition: 'none', pointerEvents: 'none' }}
                   />
@@ -391,11 +388,9 @@ export default function PitchCanvas() {
 
               {/* ── Words ── */}
               {line.words.map((w, i) => {
-                const textColor = isLineActive ? '#121212'
-                  : isLinePast ? 'rgba(157, 143, 127, 0.25)'
-                    : 'rgba(74, 69, 64, 0.4)';
-                const fontSize = isLineActive ? '24' : '20';
-                const fontWeight = isLineActive ? '700' : '500';
+                const textColor = '#1A1A1A'; // No highlight, clean uniform solid dark text
+                const fontSize = '24';
+                const fontWeight = '800'; // All bold!
 
                 let rotation = 0;
                 if (i < line.words.length - 1) {
@@ -432,26 +427,13 @@ export default function PitchCanvas() {
                         fontFamily="'Playfair Display', Georgia, serif"
                         style={{
                           transition: 'all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                          filter: isLineActive ? 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))' : 'none',
+                          filter: 'none',
                           userSelect: 'none',
                           letterSpacing: '-0.02em',
                         }}
                       >
                         {w.word}
                       </text>
-
-                      {isLineActive && (
-                        <text
-                          x="0" y="26"
-                          textAnchor="middle"
-                          fill="var(--text-muted)"
-                          fontSize="10"
-                          fontFamily="monospace"
-                          opacity="1"
-                        >
-                          {w.midiNote}
-                        </text>
-                      )}
                     </g>
                   </g>
                 );

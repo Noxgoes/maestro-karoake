@@ -98,26 +98,25 @@ router.get('/info', async (req, res) => {
 // POST /api/audio/extract
 router.post('/extract', async (req, res) => {
   try {
-    const { url } = req.body;
-    if (!url) {
-      return res.status(400).json({ error: 'URL is required' });
+    const { url, query } = req.body;
+    if (!url && !query) {
+      return res.status(400).json({ error: 'URL or query is required' });
     }
     
     if (!ytDlpWrap) {
       return res.status(503).json({ error: 'yt-dlp is not initialized yet' });
     }
 
-    console.log(`Extracting audio from ${url}`);
+    const target = url ? url : `ytsearch1:${query}`;
+    console.log(`[YT-DLP] Starting extraction for target: ${target}`);
     
     // Create a temporary file path with a generic extension first
     const fileId = Date.now();
     const tempPattern = path.join(__dirname, '..', `temp-${fileId}.%(ext)s`);
     
-    console.log(`[YT-DLP] Starting extraction for: ${url}`);
-    
     // Download best available audio natively (fastest)
     await ytDlpWrap.execPromise([
-      url,
+      target,
       '-x', 
       '--audio-quality', '0', // Best quality available natively
       '--no-playlist',
@@ -138,7 +137,11 @@ router.post('/extract', async (req, res) => {
     // Send file and clean up
     res.download(finalPath, 'audio.media', (err) => {
       if (err) console.error('[DOWNLOAD ERROR]', err);
-      if (fs.existsSync(finalPath)) fs.unlinkSync(finalPath);
+      try {
+        if (fs.existsSync(finalPath)) fs.unlinkSync(finalPath);
+      } catch (e) {
+        console.warn('[CLEANUP WARN] Could not delete temp file immediately:', e.message);
+      }
     });
     
   } catch (error) {
