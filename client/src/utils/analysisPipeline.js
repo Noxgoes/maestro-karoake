@@ -48,6 +48,7 @@ export async function runAnalysisPipeline({ navigate, extractPitch }) {
   navigate('/player');
   setAlbumArt(null);
 
+  try {
     // ── Pre-fetch metadata (cover art) instantly in the background! ──
     const query = `${song} ${artist || ''}`.trim();
     const metadataPromise = fetch(`${apiUrl}/api/metadata?q=${encodeURIComponent(query)}`, { signal })
