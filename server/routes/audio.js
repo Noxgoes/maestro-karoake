@@ -95,6 +95,26 @@ router.get('/info', async (req, res) => {
   }
 });
 
+// Helper to search YouTube and get the top video URL without player blocking
+async function searchYoutubeUrl(query) {
+  try {
+    const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+    const { data: html } = await axios.get(searchUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      },
+      timeout: 5000
+    });
+    const match = html.match(/\/watch\?v=([a-zA-Z0-9_-]{11})/);
+    if (match && match[1]) {
+      return `https://www.youtube.com/watch?v=${match[1]}`;
+    }
+  } catch (e) {
+    console.warn('[YT-SEARCH] Scrape failed:', e.message);
+  }
+  return null;
+}
+
 // POST /api/audio/extract
 router.post('/extract', async (req, res) => {
   try {
@@ -165,11 +185,51 @@ router.post('/extract', async (req, res) => {
   } catch (error) {
     const msg = error.message || '';
     console.error('[YT-EXTRACT ERROR]', msg);
+
+    // ── FALLBACK: If yt-dlp gets bot-blocked (Sign in / 429 / confirm bot), seamlessly trigger public Cobalt API fallback! ──
+    if (msg.includes('Sign in') || msg.includes('confirm you’re not a bot') || msg.includes('429') || msg.includes('Sign in to confirm')) {
+      console.log('[YT-EXTRACT] primary yt-dlp blocked. Activating public Cobalt fallback...');
+      try {
+        let videoUrl = url;
+        if (!videoUrl && query) {
+          console.log(`[YT-EXTRACT] Resolving query "${query}" for Cobalt fallback...`);
+          videoUrl = await searchYoutubeUrl(query);
+        }
+
+        if (videoUrl) {
+          console.log(`[YT-EXTRACT] Routing to Cobalt: ${videoUrl}`);
+          const cobaltRes = await axios.post('https://api.cobalt.tools/', {
+            url: videoUrl,
+            isAudioOnly: true,
+            audioFormat: 'mp3'
+          }, {
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            },
+            timeout: 15000
+          });
+
+          if (cobaltRes.data && cobaltRes.data.url) {
+            const downloadUrl = cobaltRes.data.url;
+            console.log(`[YT-EXTRACT] Cobalt success! Streaming direct audio from: ${downloadUrl}`);
+            
+            // Stream the audio directly from Cobalt to the client!
+            const audioStream = await axios.get(downloadUrl, { responseType: 'stream' });
+            res.setHeader('Content-Type', 'audio/mpeg');
+            return audioStream.data.pipe(res);
+          }
+        }
+      } catch (cobaltErr) {
+        console.error('[YT-EXTRACT COBALT FALLBACK ERROR]', cobaltErr.message);
+      }
+    }
     
     if (msg.includes('429')) {
       return res.status(429).json({ error: 'YouTube is rate-limiting your IP. Please try again later or use a VPN.' });
     }
-    if (msg.includes('Sign in') || msg.includes('confirm you’re not a bot')) {
+    if (msg.includes('Sign in') || msg.includes('confirm you’re not a bot') || msg.includes('Sign in to confirm')) {
       return res.status(403).json({ 
         error: "YouTube bot detection has blocked this server's cloud IP. To fix this, please upload the audio file directly in the 'Upload Audio' tab (100% offline & super fast!), or save your exported YouTube cookies as 'cookies.txt' in the project root folder." 
       });
