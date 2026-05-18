@@ -15,8 +15,8 @@ const initYtDlp = async () => {
     const isWin = process.platform === 'win32';
     const binaryName = isWin ? 'yt-dlp.exe' : 'yt-dlp';
     
-    // On Render/Linux, we use /tmp to avoid permission issues
-    const baseDir = isWin ? path.join(__dirname, '..') : '/tmp';
+    // Save in workspace server root to ensure full execution and read-write permissions
+    const baseDir = path.join(__dirname, '..');
     const binaryPath = path.join(baseDir, binaryName);
     
     console.log(`[YT-DLP] Target path: ${binaryPath}`);
@@ -114,11 +114,12 @@ router.post('/extract', async (req, res) => {
     const fileId = Date.now();
     const tempPattern = path.join(__dirname, '..', `temp-${fileId}.%(ext)s`);
     
-    // Download best available audio natively (fastest)
+    // Download ONLY the audio stream (tiny payload, super fast download!)
     await ytDlpWrap.execPromise([
       target,
+      '-f', 'ba', // Only request the audio stream
       '-x', 
-      '--audio-quality', '0', // Best quality available natively
+      '--audio-quality', '5', // Standard standard audio conversion
       '--no-playlist',
       '-o', tempPattern
     ]);

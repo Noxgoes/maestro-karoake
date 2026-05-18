@@ -42,6 +42,24 @@ app.get('/api/metadata', async (req, res) => {
 app.use('/api/lyrics', lyricsRouter);
 app.use('/api/audio', audioRouter);
 
+// Serve static files from React build directory
+const clientBuildPath = path.join(__dirname, '../client/dist');
+app.use(express.static(clientBuildPath));
+
+// For any other request, send back React's index.html (SPA client-side routing fallback)
+app.get('*', (req, res, next) => {
+  // If it's an API route, let it pass to standard express handling
+  if (req.path.startsWith('/api')) {
+    return next();
+  }
+  res.sendFile(path.join(clientBuildPath, 'index.html'), (err) => {
+    if (err) {
+      // If index.html doesn't exist (e.g. in dev), return 404
+      res.status(404).send('Not Found');
+    }
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
