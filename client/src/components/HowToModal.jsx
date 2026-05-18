@@ -9,6 +9,7 @@ export default function HowToModal() {
 
   return (
     <div
+      className="how-to-backdrop"
       style={{
         position: 'fixed',
         top: 0, left: 0, right: 0, bottom: 0,
@@ -24,6 +25,7 @@ export default function HowToModal() {
       onClick={() => setIsHowToOpen(false)}
     >
       <div
+        className="how-to-card"
         style={{
           background: 'var(--bg)',
           borderRadius: '28px',
@@ -39,6 +41,7 @@ export default function HowToModal() {
       >
         {/* Close Button */}
         <button
+          className="how-to-close-btn"
           onClick={() => setIsHowToOpen(false)}
           style={{
             position: 'absolute',
@@ -61,9 +64,9 @@ export default function HowToModal() {
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
-
+ 
         {/* Header */}
-        <div style={{ marginBottom: 28 }}>
+        <div className="how-to-header" style={{ marginBottom: 28 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
             <span style={{ color: 'var(--star)', fontSize: 18 }}>✦</span>
             <span style={{ fontSize: 13, fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
@@ -77,69 +80,70 @@ export default function HowToModal() {
             Master your favorite melodies with visual pitch mapping.
           </p>
         </div>
-
+ 
         {/* Step-by-Step Guide */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20, marginBottom: 32 }}>
+        <div className="how-to-steps" style={{ display: 'flex', flexDirection: 'column', gap: 20, marginBottom: 32 }}>
           {/* Step 1 */}
-          <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-            <div style={{
+          <div className="how-to-step-item" style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+            <div className="how-to-step-badge" style={{
               width: 36, height: 36, borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, flexShrink: 0,
-              color: 'var(--text-primary)', fontFamily: 'monospace'
+              display: 'flex', alignItems: 'center', justifycontent: 'center', fontWeight: 700, flexShrink: 0,
+              color: 'var(--text-primary)', fontFamily: 'monospace', display: 'flex', justifyContent: 'center'
             }}>
               1
             </div>
-            <div>
-              <h4 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>
+            <div className="how-to-step-content">
+              <h4 className="how-to-step-title" style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>
                 Check Artist & Song Name or Upload
               </h4>
-              <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              <p className="how-to-step-text" style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5 }}>
                 Use the search bar and verify both the <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>exact artist name and song title</strong> for precise lyric matching, or upload your own audio file (MP3/WAV/M4A) directly into the studio.
               </p>
             </div>
           </div>
-
+ 
           {/* Step 2 */}
-          <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-            <div style={{
+          <div className="how-to-step-item" style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+            <div className="how-to-step-badge" style={{
               width: 36, height: 36, borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, flexShrink: 0,
-              color: 'var(--text-primary)', fontFamily: 'monospace'
+              display: 'flex', alignItems: 'center', justifycontent: 'center', fontWeight: 700, flexShrink: 0,
+              color: 'var(--text-primary)', fontFamily: 'monospace', display: 'flex', justifyContent: 'center'
             }}>
               2
             </div>
-            <div>
-              <h4 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>
+            <div className="how-to-step-content">
+              <h4 className="how-to-step-title" style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>
                 AI Pitch & Lyrics Alignment
               </h4>
-              <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              <p className="how-to-step-text" style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5 }}>
                 Our in-browser Basic Pitch AI maps the vocal melody while automatically syncing the lyrics word-by-word.
               </p>
             </div>
           </div>
-
+ 
           {/* Step 3 */}
-          <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-            <div style={{
+          <div className="how-to-step-item" style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+            <div className="how-to-step-badge" style={{
               width: 36, height: 36, borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, flexShrink: 0,
-              color: 'var(--text-primary)', fontFamily: 'monospace'
+              display: 'flex', alignItems: 'center', justifycontent: 'center', fontWeight: 700, flexShrink: 0,
+              color: 'var(--text-primary)', fontFamily: 'monospace', display: 'flex', justifyContent: 'center'
             }}>
               3
             </div>
-            <div>
-              <h4 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>
+            <div className="how-to-step-content">
+              <h4 className="how-to-step-title" style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>
                 Follow the Pitch Contour
               </h4>
-              <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              <p className="how-to-step-text" style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5 }}>
                 Words float higher for high notes and dip for low notes. Follow the directional arrows and active word highlights to hit the perfect pitch!
               </p>
             </div>
           </div>
         </div>
-
+ 
         {/* CTA Button */}
         <button
+          className="how-to-cta-btn"
           onClick={() => setIsHowToOpen(false)}
           style={{
             width: '100%',
