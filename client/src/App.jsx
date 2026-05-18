@@ -364,6 +364,7 @@ function StudioPage() {
                     artist: track.artist,
                     audioSourceTab: 'preset',
                     presetPath: `/presets/${track.preset}`,
+                    albumArt: track.cover.replace('120x120bb', '600x600bb'),
                     error: null
                   });
                   runAnalysisPipeline({ navigate, extractPitch });
