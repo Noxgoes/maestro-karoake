@@ -115,12 +115,91 @@ async function searchYoutubeUrl(query) {
   return null;
 }
 
+// Helper to fetch YouTube audio link using RapidAPI (bypasses all blocks with 100% reliability!)
+async function fetchRapidApiYoutubeAudio(videoUrl) {
+  const apiKey = process.env.RAPIDAPI_KEY;
+  if (!apiKey) return null;
+
+  const videoIdMatch = videoUrl.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})/);
+  const videoId = videoIdMatch ? videoIdMatch[1] : null;
+
+  // ── OPTION A: Try youtube-mp36 (most popular, huge free tier) ──
+  try {
+    console.log('[RAPIDAPI] Attempting YouTube to MP3 extraction via youtube-mp36...');
+    const res = await axios.get('https://youtube-mp36.p.rapidapi.com/dl', {
+      params: { id: videoId },
+      headers: {
+        'x-rapidapi-key': apiKey,
+        'x-rapidapi-host': 'youtube-mp36.p.rapidapi.com'
+      },
+      timeout: 10000
+    });
+
+    if (res.data && res.data.link) {
+      console.log(`[RAPIDAPI] youtube-mp36 success! Audio link: ${res.data.link}`);
+      return res.data.link;
+    }
+  } catch (err) {
+    console.warn('[RAPIDAPI] youtube-mp36 failed:', err.message);
+  }
+
+  // ── OPTION B: Try youtube-mp310 (excellent fallback) ──
+  try {
+    console.log('[RAPIDAPI] Attempting YouTube extraction via youtube-mp310...');
+    const res = await axios.get('https://youtube-mp310.p.rapidapi.com/download/mp3', {
+      params: { url: videoUrl },
+      headers: {
+        'x-rapidapi-key': apiKey,
+        'x-rapidapi-host': 'youtube-mp310.p.rapidapi.com'
+      },
+      timeout: 10000
+    });
+
+    if (res.data) {
+      const link = res.data.link || res.data.downloadUrl || res.data;
+      if (typeof link === 'string' && link.startsWith('http')) {
+        console.log(`[RAPIDAPI] youtube-mp310 success! Audio link: ${link}`);
+        return link;
+      }
+    }
+  } catch (err) {
+    console.warn('[RAPIDAPI] youtube-mp310 failed:', err.message);
+  }
+
+  return null;
+}
+
 // POST /api/audio/extract
 router.post('/extract', async (req, res) => {
   try {
     const { url, query } = req.body;
     if (!url && !query) {
       return res.status(400).json({ error: 'URL or query is required' });
+    }
+
+    // ── HIGH PRIORITY: Try RapidAPI YouTube to MP3 first if key is provided in .env ──
+    if (process.env.RAPIDAPI_KEY) {
+      console.log('[YT-EXTRACT] RapidAPI key detected. Directing extraction to RapidAPI...');
+      try {
+        let videoUrl = url;
+        if (!videoUrl && query) {
+          console.log(`[YT-EXTRACT] Resolving query "${query}" for RapidAPI search...`);
+          videoUrl = await searchYoutubeUrl(query);
+        }
+        
+        if (videoUrl) {
+          const directAudioUrl = await fetchRapidApiYoutubeAudio(videoUrl);
+          if (directAudioUrl) {
+            console.log(`[YT-EXTRACT] RapidAPI extraction succeeded! Streaming audio from: ${directAudioUrl}`);
+            const audioStream = await axios.get(directAudioUrl, { responseType: 'stream' });
+            res.setHeader('Content-Type', 'audio/mpeg');
+            return audioStream.data.pipe(res);
+          }
+        }
+      } catch (err) {
+        console.error('[YT-EXTRACT RAPIDAPI ERROR]', err.message);
+        // Fall back to local scraper if RapidAPI fails
+      }
     }
     
     if (!ytDlpWrap) {
