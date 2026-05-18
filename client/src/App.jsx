@@ -136,90 +136,90 @@ function PlayerNav({ song, artist, onExit, accuracyScore }) {
 
   return (
     <nav
-      className="kara-nav"
+      className="kara-nav player-nav-container"
       style={{ borderBottom: '0.5px solid var(--border-light)', background: 'var(--bg)' }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+      <div className="player-nav-main-row">
         <KaraLogo onClick={onExit} />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {albumArt && (
-            <img src={albumArt} alt="" style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover' }} />
-          )}
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: 16, fontFamily: "'Playfair Display', serif", fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
-              {song}
-            </span>
-            {artist && (
-              <span style={{ fontSize: 13, color: 'var(--text-muted)', fontFamily: 'Inter, sans-serif', lineHeight: 1.2 }}>
-                {artist}
+        <div className="player-nav-actions">
+          <button
+            className="nav-how-to-use-btn"
+            onClick={() => useAppStore.setState({ isHowToOpen: true })}
+            style={{
+              padding: '9px 16px',
+              borderRadius: 'var(--radius-pill)',
+              border: '1px solid var(--border)',
+              background: 'var(--surface)',
+              color: 'var(--text-primary)',
+              fontSize: 13,
+              fontFamily: 'Inter, sans-serif',
+              fontWeight: 500,
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 6,
+              transition: 'background 0.2s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#E0D8CC'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            How to use
+          </button>
+
+          {accuracyScore !== null && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              background: 'var(--surface)', border: '0.5px solid var(--border)',
+              borderRadius: 'var(--radius-pill)', padding: '6px 16px',
+            }}>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'Inter, sans-serif' }}>Accuracy</span>
+              <span style={{
+                fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif',
+                color: accuracyScore >= 80 ? '#1D9E75' : accuracyScore >= 50 ? '#D4A017' : '#D85A30',
+              }}>
+                {accuracyScore}%
               </span>
-            )}
-          </div>
+            </div>
+          )}
+
+          <button
+            id="try-another-song"
+            onClick={onExit}
+            style={{
+              padding: '9px 20px',
+              borderRadius: 'var(--radius-pill)',
+              border: '1px solid var(--text-primary)',
+              background: 'transparent',
+              color: 'var(--text-primary)',
+              fontSize: 13,
+              fontFamily: 'Inter, sans-serif',
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition: 'background 0.2s',
+              whiteSpace: 'nowrap',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+          >
+            Try another song
+          </button>
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button
-          className="nav-how-to-use-btn"
-          onClick={() => useAppStore.setState({ isHowToOpen: true })}
-          style={{
-            padding: '9px 16px',
-            borderRadius: 'var(--radius-pill)',
-            border: '1px solid var(--border)',
-            background: 'var(--surface)',
-            color: 'var(--text-primary)',
-            fontSize: 13,
-            fontFamily: 'Inter, sans-serif',
-            fontWeight: 500,
-            cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: 6,
-            transition: 'background 0.2s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#E0D8CC'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; }}
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          How to use
-        </button>
-
-        {accuracyScore !== null && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            background: 'var(--surface)', border: '0.5px solid var(--border)',
-            borderRadius: 'var(--radius-pill)', padding: '6px 16px',
-          }}>
-            <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'Inter, sans-serif' }}>Accuracy</span>
-            <span style={{
-              fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif',
-              color: accuracyScore >= 80 ? '#1D9E75' : accuracyScore >= 50 ? '#D4A017' : '#D85A30',
-            }}>
-              {accuracyScore}%
-            </span>
-          </div>
+      <div className="player-nav-metadata-row">
+        {albumArt && (
+          <img src={albumArt} alt="" style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover' }} />
         )}
-
-        <button
-          id="try-another-song"
-          onClick={onExit}
-          style={{
-            padding: '9px 20px',
-            borderRadius: 'var(--radius-pill)',
-            border: '1px solid var(--text-primary)',
-            background: 'transparent',
-            color: 'var(--text-primary)',
-            fontSize: 13,
-            fontFamily: 'Inter, sans-serif',
-            fontWeight: 500,
-            cursor: 'pointer',
-            transition: 'background 0.2s',
-            whiteSpace: 'nowrap',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface)'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-        >
-          Try another song
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <span style={{ fontSize: 16, fontFamily: "'Playfair Display', serif", fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+            {song}
+          </span>
+          {artist && (
+            <span style={{ fontSize: 13, color: 'var(--text-muted)', fontFamily: 'Inter, sans-serif', lineHeight: 1.2 }}>
+              {artist}
+            </span>
+          )}
+        </div>
       </div>
     </nav>
   );
