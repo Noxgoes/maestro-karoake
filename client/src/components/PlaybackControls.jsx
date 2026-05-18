@@ -26,6 +26,36 @@ export default function PlaybackControls() {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, [setIsFullscreen]);
 
+  const [showControls, setShowControls] = React.useState(true);
+
+  React.useEffect(() => {
+    if (!isFullscreen) {
+      setShowControls(true);
+      document.body.style.cursor = 'default';
+      return;
+    }
+
+    let timeoutId;
+    const handleMouseMove = () => {
+      setShowControls(true);
+      document.body.style.cursor = 'default';
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        setShowControls(false);
+        document.body.style.cursor = 'none';
+      }, 3000);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    handleMouseMove();
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.body.style.cursor = 'default';
+      clearTimeout(timeoutId);
+    };
+  }, [isFullscreen]);
+
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(err => {
@@ -47,7 +77,14 @@ export default function PlaybackControls() {
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className="kara-player-bar">
+    <div 
+      className={`kara-player-bar ${isFullscreen ? 'is-fullscreen' : ''}`}
+      style={{
+        transform: isFullscreen && !showControls ? 'translateY(120px)' : 'translateY(0)',
+        opacity: isFullscreen && !showControls ? 0 : 1,
+        transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease',
+      }}
+    >
       {/* Progress bar */}
       <div
         className="player-progress-track"

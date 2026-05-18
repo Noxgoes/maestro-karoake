@@ -505,7 +505,7 @@ function PlayerPage() {
       <div style={{ 
         flex: 1, 
         minHeight: 0, 
-        padding: isFullscreen ? '24px 24px 120px' : '8px 24px 120px', 
+        padding: isFullscreen ? '0px' : '8px 24px 120px', 
         marginTop: isFullscreen ? 0 : 72,
         overflow: 'hidden',
         display: 'flex',

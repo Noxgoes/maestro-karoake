@@ -240,11 +240,11 @@ export default function PitchCanvas() {
           width: '100%',
           overflowY: 'auto',
           background: 'var(--bg)',
-          borderRadius: 'var(--radius-lg)',
-          border: '0.5px solid var(--border-light)',
-          marginTop: 8,
+          borderRadius: isFullscreen ? '0px' : 'var(--radius-lg)',
+          border: isFullscreen ? 'none' : '0.5px solid var(--border-light)',
+          marginTop: isFullscreen ? 0 : 8,
           position: 'relative',
-          maxHeight: isFullscreen ? 'calc(100vh - 120px)' : 'calc(100vh - 180px)',
+          maxHeight: isFullscreen ? '100vh' : 'calc(100vh - 180px)',
           scrollBehavior: isScrolling ? 'auto' : 'smooth'
         }}
         className="group"
