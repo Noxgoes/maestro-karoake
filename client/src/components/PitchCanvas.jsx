@@ -95,15 +95,29 @@ export default function PitchCanvas() {
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [syncOffsetMs]); // Re-run ensures instant snap on sync change
 
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = windowWidth < 768;
+
+  const rowHeight = isMobile ? 160 : 220;
+  const padding = isMobile ? 12 : 20;
+  const hPad = isMobile ? 40 : 180;
+  const svgWidth = isMobile ? 640 : 1200;
+  const wordFontSize = isMobile ? '19' : '24';
+  const wordFontWeight = isMobile ? '700' : '800';
+
   const MIN_WORD_SPACING = 160;
-  const rowHeight = 220;
-  const padding = 20;
-  const hPad = 180; // Increased for ironclad clipping protection
 
   // ── Build per-line layout data ─────────────────────────────────────────────
-  const { linesData, minMidi, maxMidi, svgWidth } = useMemo(() => {
+  const { linesData, minMidi, maxMidi } = useMemo(() => {
     if (!alignedLyrics || alignedLyrics.length === 0)
-      return { linesData: [], minMidi: 0, maxMidi: 100, svgWidth: 1200 };
+      return { linesData: [], minMidi: 0, maxMidi: 100 };
 
     const normalizedLyrics = calculateYPercents(alignedLyrics);
     const midis = alignedLyrics.map(w => w.midiNote);
@@ -116,9 +130,6 @@ export default function PitchCanvas() {
       lineMap[w.lineIndex].push(w);
     });
 
-    const _svgWidth = 1200; // Standard base width for scaling
-    const maxWordsInLine = Math.max(...Object.values(lineMap).map(ws => ws.length));
-
     const sortedLineKeys = Object.keys(lineMap).sort((a, b) => Number(a) - Number(b));
 
     const _linesData = sortedLineKeys.map((lineIndex, idx) => {
@@ -126,8 +137,8 @@ export default function PitchCanvas() {
       const positionedWords = words.map((w, i) => {
         // Distribute X evenly between hPad and svgWidth - hPad
         const x = words.length > 1
-          ? hPad + (i / (words.length - 1)) * (_svgWidth - hPad * 2)
-          : _svgWidth / 2; // Center if only one word
+          ? hPad + (i / (words.length - 1)) * (svgWidth - hPad * 2)
+          : svgWidth / 2; // Center if only one word
         const usableHeight = rowHeight - padding * 2;
         // Adjusted to 1.8 for highly prominent, dramatic vertical pitch contours
         const sensitiveYPercent = 50 + (w.yPercent - 50) * 1.8;
@@ -142,8 +153,8 @@ export default function PitchCanvas() {
       return { lineIndex, yOffset: idx * rowHeight, words: positionedWords, pathData, startMs: lineStartMs, endMs: lineEndMs };
     });
 
-    return { linesData: _linesData, minMidi: _minMidi, maxMidi: _maxMidi, svgWidth: _svgWidth };
-  }, [alignedLyrics]);
+    return { linesData: _linesData, minMidi: _minMidi, maxMidi: _maxMidi };
+  }, [alignedLyrics, rowHeight, padding, hPad, svgWidth]);
 
 
 
@@ -169,8 +180,8 @@ export default function PitchCanvas() {
     const viewportH = container.clientHeight;
     const viewportW = container.clientWidth;
 
-    // Scale factor: how much the SVG is stretched/shrunk relative to our 1200 base
-    const scale = viewportW / 1200;
+    // Scale factor: how much the SVG is stretched/shrunk relative to our base width
+    const scale = viewportW / svgWidth;
 
     // Calculate target in screen pixels
     const lineCenterSvg = Number(activeLine.yOffset) + rowHeight / 2;
@@ -180,7 +191,7 @@ export default function PitchCanvas() {
       top: Math.max(0, scrollTarget),
       behavior: manualLine !== null ? 'instant' : 'smooth' // Snappier when manually clicking
     });
-  }, [activeLine?.lineIndex, manualLine, isScrolling]);
+  }, [activeLine?.lineIndex, manualLine, isScrolling, svgWidth, rowHeight]);
 
   // ── Mic overlay helpers ───────────────────────────────────────────────────
   const getCoordinates = (timeMs, midi) => {
@@ -390,8 +401,8 @@ export default function PitchCanvas() {
               {/* ── Words ── */}
               {line.words.map((w, i) => {
                 const textColor = '#1A1A1A'; // No highlight, clean uniform solid dark text
-                const fontSize = '24';
-                const fontWeight = '800'; // All bold!
+                const fontSize = wordFontSize;
+                const fontWeight = wordFontWeight;
 
                 let rotation = 0;
                 if (i < line.words.length - 1) {

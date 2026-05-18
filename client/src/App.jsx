@@ -160,6 +160,7 @@ function PlayerNav({ song, artist, onExit, accuracyScore }) {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <button
+          className="nav-how-to-use-btn"
           onClick={() => useAppStore.setState({ isHowToOpen: true })}
           style={{
             padding: '9px 16px',
