@@ -9,10 +9,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
  */
 export function useAutoscroll(containerRef, isPlaying) {
   const [isScrolling, setIsScrolling] = useState(false);
-  const [speed, setSpeedState] = useState(40);
+  const [speed, setSpeedState] = useState(20);
 
   const isScrollingRef = useRef(false);
-  const speedRef = useRef(40);
+  const speedRef = useRef(20);
   const lastTimeRef = useRef(null);
   const rafIdRef = useRef(null);
   const isPausedRef = useRef(false);
