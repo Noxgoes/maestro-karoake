@@ -38,6 +38,7 @@ function AlbumScatter() {
       {ALBUM_CARDS.map(card => (
         <div
           key={card.id}
+          id={`album-card-${card.id}`}
           className={`album-card ${card.float === 'a' ? 'float-a' : 'float-b'}`}
           style={{
             width: card.w, height: card.w,

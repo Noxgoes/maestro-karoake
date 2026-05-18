@@ -696,9 +696,49 @@ h1, h2, h3, .kara-serif {
     display: none !important; /* Hide header search bar on mobile */
   }
 
-  /* Hide background scattered album covers on mobile for focused readability */
+  /* Hide background scattered album covers on mobile by default */
   .album-card {
     display: none !important;
+  }
+
+  /* Selectively show 4 clean corner cards on mobile, scaled down and positioned safely */
+  #album-card-starboy,
+  #album-card-rockstar,
+  #album-card-adele21,
+  #album-card-damn {
+    display: block !important;
+    width: 76px !important;
+    height: 76px !important;
+    opacity: 0.55 !important;
+    z-index: 1 !important; /* Safely underneath hero-center's z-index: 10 */
+  }
+
+  #album-card-starboy {
+    top: 9% !important;
+    left: 4% !important;
+    transform: rotate(-10deg) !important;
+  }
+
+  #album-card-rockstar {
+    top: 10% !important;
+    left: auto !important;
+    right: 4% !important;
+    transform: rotate(12deg) !important;
+  }
+
+  #album-card-adele21 {
+    top: auto !important;
+    bottom: 12% !important;
+    left: 4% !important;
+    transform: rotate(8deg) !important;
+  }
+
+  #album-card-damn {
+    top: auto !important;
+    bottom: 13% !important;
+    left: auto !important;
+    right: 4% !important;
+    transform: rotate(-8deg) !important;
   }
 
   .nav-auth .btn-signup {
