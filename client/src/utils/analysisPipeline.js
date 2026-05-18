@@ -48,7 +48,18 @@ export async function runAnalysisPipeline({ navigate, extractPitch }) {
   navigate('/player');
   setAlbumArt(null);
 
-  try {
+    // ── Pre-fetch metadata (cover art) instantly in the background! ──
+    const query = `${song} ${artist || ''}`.trim();
+    const metadataPromise = fetch(`${apiUrl}/api/metadata?q=${encodeURIComponent(query)}`, { signal })
+      .then(res => res.json())
+      .then(data => {
+        if (data.results && data.results[0]) {
+          const highResArt = data.results[0].artworkUrl100.replace('100x100bb', '600x600bb');
+          setAlbumArt(highResArt);
+        }
+      })
+      .catch(() => {});
+
     let audioData;
 
     if (audioFile && audioSourceTab === 'upload') {
@@ -142,15 +153,6 @@ export async function runAnalysisPipeline({ navigate, extractPitch }) {
 
     // 2. Fetch lyrics and metadata concurrently
     setAnalysisStep('fetching-lyrics');
-    const query = `${song} ${artist || ''}`.trim();
-    const metadataPromise = fetch(`${apiUrl}/api/metadata?q=${encodeURIComponent(query)}`, { signal })
-      .then(res => res.json())
-      .then(data => {
-        if (data.results && data.results[0]) {
-          setAlbumArt(data.results[0].artworkUrl100.replace('100x100bb', '600x600bb'));
-        }
-      })
-      .catch(() => {});
 
     const lyricsPromise = performLyricsFetch(song, artist, audioBuffer.duration, signal).then(data => {
       console.log(`%c[LYRIC SOURCE] Lyrics retrieved successfully`, 'color: #7c3aed; font-weight: bold; background: #f3f0ff; padding: 2px 6px; border-radius: 4px;');
