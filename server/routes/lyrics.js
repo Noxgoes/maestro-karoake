@@ -95,19 +95,60 @@ router.get('/', async (req, res) => {
           });
 
           if (Array.isArray(results) && results.length > 0) {
-            // First, filter out Southern Indian scripts (Telugu, Tamil, Malayalam, Kannada)
+            // ── 1. BLACKLIST FILTER ──
+            // Filter out unwanted remixes, covers, instrumental, or multilingual mixes
+            // unless the user query specifically contains those terms.
+            const blacklistedKeywords = ['mix', 'multilingual', 'mashup', 'instrumental', 'cover', 'tribute', 'karaoke', 'bgm', 'version'];
+            const activeBlacklist = blacklistedKeywords.filter(keyword => !q.toLowerCase().includes(keyword));
+            
+            const cleanResults = results.filter(r => {
+              const trackLower = (r.trackName || '').toLowerCase();
+              return !activeBlacklist.some(keyword => trackLower.includes(keyword));
+            });
+            const baseResults = cleanResults.length > 0 ? cleanResults : results;
+
+            // ── 2. SOUTHERN SCRIPT FILTER ──
+            // Filter out Southern Indian scripts (Telugu, Tamil, Malayalam, Kannada)
             // if we are searching for a Hindi/Romanized track, provided non-Southern results exist.
             const hasSouthernScripts = (text) => /[\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F]/.test(text);
-            const nonSouthernResults = results.filter(r => !hasSouthernScripts(r.plainLyrics || r.syncedLyrics || ''));
-            const basePool = nonSouthernResults.length > 0 ? nonSouthernResults : results;
+            const nonSouthernResults = baseResults.filter(r => !hasSouthernScripts(r.plainLyrics || r.syncedLyrics || ''));
+            const basePool = nonSouthernResults.length > 0 ? nonSouthernResults : baseResults;
 
-            // Detect Devanagari Hindi script
+            // ── 3. DEVANAGARI HINDI PREFERENCE ──
             const hindiResults = basePool.filter(r => /[\u0900-\u097F]/.test(r.plainLyrics || r.syncedLyrics || ''));
             const pool = hindiResults.length > 0 ? hindiResults : basePool;
 
+            // ── 4. ADVANCED METADATA MATCH SCORING ──
+            const getMatchScore = (r) => {
+              let score = 0;
+              const rTitle = (r.trackName || '').toLowerCase();
+              const rArtist = (r.artistName || '').toLowerCase();
+              const tLower = cleanTitle.toLowerCase();
+              const aLower = cleanArtist.toLowerCase();
+
+              // Exact or partial title match
+              if (rTitle === tLower) score += 100;
+              else if (rTitle.includes(tLower) || tLower.includes(rTitle)) score += 50;
+
+              // Exact or partial artist match
+              if (rArtist === aLower) score += 50;
+              else if (rArtist.includes(aLower) || aLower.includes(rArtist)) score += 20;
+
+              // Synced lyrics are highly preferred
+              if (r.syncedLyrics) score += 30;
+
+              return score;
+            };
+
             const bestMatch = pool
-              .filter(r => r.syncedLyrics)
+              .filter(r => r.syncedLyrics || r.plainLyrics)
               .sort((a, b) => {
+                const scoreA = getMatchScore(a);
+                const scoreB = getMatchScore(b);
+                if (scoreA !== scoreB) {
+                  return scoreB - scoreA; // Prefer higher match score
+                }
+                // Tie breaker: closer duration proximity
                 if (duration) {
                   const diffA = Math.abs(a.duration - parseFloat(duration));
                   const diffB = Math.abs(b.duration - parseFloat(duration));
