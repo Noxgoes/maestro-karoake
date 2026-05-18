@@ -403,16 +403,23 @@ function StudioPage() {
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
-                <img 
-                  src={track.cover} 
-                  alt="" 
-                  style={{ width: 44, height: 44, borderRadius: '8px', objectFit: 'cover' }} 
-                  onError={e => {
-                    if (e.currentTarget.src !== track.fallbackCover) {
-                      e.currentTarget.src = track.fallbackCover;
-                    }
-                  }}
-                />
+                <div style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, var(--text-primary) 0%, var(--border) 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--bg)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 18V5l12-2v13" />
+                    <circle cx="6" cy="18" r="3" />
+                    <circle cx="18" cy="16" r="3" />
+                  </svg>
+                </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ 
                     fontSize: 13, 
