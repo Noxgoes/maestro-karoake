@@ -4,6 +4,16 @@ import requests
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+# Try to automatically load environment variables from the shared .env file in the root directory
+try:
+    from dotenv import load_dotenv
+    dotenv_path = os.path.join(os.path.dirname(__file__), "..", ".env")
+    if os.path.exists(dotenv_path):
+        print(f"[FASTAPI] Loading environment variables from {dotenv_path}")
+        load_dotenv(dotenv_path)
+except ImportError:
+    pass
+
 app = FastAPI()
 
 # Enable CORS for frontend and server communication
