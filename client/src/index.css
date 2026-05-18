@@ -529,6 +529,28 @@ h1, h2, h3, .kara-serif {
   transition: width 0.1s linear;
 }
 
+/* player-controls desktop horizontal spacing system */
+.player-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.player-controls-primary {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.player-controls-secondary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: auto;
+}
+
+
 /* ─── Stage mode overrides ───────────────────────────────────── */
 .stage-header {
   background: var(--bg);
