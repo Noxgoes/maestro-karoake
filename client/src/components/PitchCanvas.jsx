@@ -267,32 +267,6 @@ export default function PitchCanvas() {
           toggle={toggle}
           reset={reset}
         />
-        {/* ── Status strip ── */}
-        <div style={{
-          position: 'sticky', top: isFullscreen ? 0 : 49, left: 0, right: 0, zIndex: 20,
-          display: 'flex', alignItems: 'center', gap: 16,
-          padding: '8px 20px',
-          background: 'var(--surface)',
-          borderBottom: '0.5px solid var(--border-light)',
-          fontSize: 11, fontFamily: 'monospace',
-        }}>
-          <span style={{ color: 'var(--text-muted)' }}>t={(currentMs / 1000).toFixed(2)}s</span>
-          {activeLine ? (
-            <>
-              <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>
-                {activeLine.words.map(w => w.word).join(' ')}
-              </span>
-              <span style={{ color: 'var(--text-muted)' }}>
-                {(activeLine.startMs / 1000).toFixed(2)}s – {(activeLine.endMs / 1000).toFixed(2)}s
-              </span>
-            </>
-          ) : (
-            <span style={{ color: 'var(--border)' }}>—</span>
-          )}
-          <span style={{ marginLeft: 'auto', color: 'var(--border)' }}>
-            {alignedLyrics.length} words · {linesData.length} lines
-          </span>
-        </div>
 
       <button
         onClick={handleExportSVG}
