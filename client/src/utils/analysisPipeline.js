@@ -61,7 +61,14 @@ export async function runAnalysisPipeline({ navigate, extractPitch }) {
         body: JSON.stringify({ url: youtubeUrl }),
         signal,
       });
-      if (!response.ok) throw new Error('Failed to fetch audio from YouTube');
+      if (!response.ok) {
+        let errMsg = 'Failed to fetch audio from YouTube';
+        try {
+          const errData = await response.json();
+          if (errData.error) errMsg = errData.error;
+        } catch (_) {}
+        throw new Error(errMsg);
+      }
       audioData = await response.arrayBuffer();
       store.setIsFetchingYt(false);
     } else {
@@ -74,7 +81,14 @@ export async function runAnalysisPipeline({ navigate, extractPitch }) {
         body: JSON.stringify({ query: searchQuery }),
         signal,
       });
-      if (!response.ok) throw new Error(`Failed to find audio stream for "${searchQuery}"`);
+      if (!response.ok) {
+        let errMsg = `Failed to find audio stream for "${searchQuery}"`;
+        try {
+          const errData = await response.json();
+          if (errData.error) errMsg = errData.error;
+        } catch (_) {}
+        throw new Error(errMsg);
+      }
       audioData = await response.arrayBuffer();
       store.setIsFetchingYt(false);
     }

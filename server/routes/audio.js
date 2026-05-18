@@ -114,18 +114,32 @@ router.post('/extract', async (req, res) => {
     const fileId = Date.now();
     const tempPattern = path.join(__dirname, '..', `temp-${fileId}.%(ext)s`);
     
-    // Download ONLY the audio stream with anti-bot bypass headers (tiny payload, super fast download!)
-    await ytDlpWrap.execPromise([
+    // Compile extraction arguments with anti-blocking features (extractor-args & custom headers)
+    const args = [
       target,
       '-f', 'ba', // Only request the audio stream
       '-x', 
       '--audio-quality', '5', // Standard audio conversion
       '--no-playlist',
       '--no-check-certificates',
+      '--extractor-args', 'youtube:player_client=android,web',
       '--add-header', 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       '--add-header', 'Accept-Language: en-US,en;q=0.9',
       '-o', tempPattern
-    ]);
+    ];
+
+    // Check if user has uploaded a custom cookies.txt in workspace root or server root
+    const cookiesPath1 = path.join(__dirname, '..', 'cookies.txt');
+    const cookiesPath2 = path.join(__dirname, '..', '..', 'cookies.txt');
+    if (fs.existsSync(cookiesPath1)) {
+      console.log(`[YT-DLP] Using cookies from: ${cookiesPath1}`);
+      args.push('--cookies', cookiesPath1);
+    } else if (fs.existsSync(cookiesPath2)) {
+      console.log(`[YT-DLP] Using cookies from: ${cookiesPath2}`);
+      args.push('--cookies', cookiesPath2);
+    }
+
+    await ytDlpWrap.execPromise(args);
     
     // Find what file was actually created (could be .m4a, .webm, .opus etc)
     const files = fs.readdirSync(path.join(__dirname, '..'));
@@ -155,8 +169,10 @@ router.post('/extract', async (req, res) => {
     if (msg.includes('429')) {
       return res.status(429).json({ error: 'YouTube is rate-limiting your IP. Please try again later or use a VPN.' });
     }
-    if (msg.includes('Sign in')) {
-      return res.status(403).json({ error: 'YouTube bot detection triggered. Try a different video or use a VPN.' });
+    if (msg.includes('Sign in') || msg.includes('confirm you’re not a bot')) {
+      return res.status(403).json({ 
+        error: "YouTube bot detection has blocked this server's cloud IP. To fix this, please upload the audio file directly in the 'Upload Audio' tab (100% offline & super fast!), or save your exported YouTube cookies as 'cookies.txt' in the project root folder." 
+      });
     }
     
     res.status(500).json({ error: 'Failed to extract audio from YouTube. The link might be restricted or your IP might be blocked.' });
