@@ -114,13 +114,16 @@ router.post('/extract', async (req, res) => {
     const fileId = Date.now();
     const tempPattern = path.join(__dirname, '..', `temp-${fileId}.%(ext)s`);
     
-    // Download ONLY the audio stream (tiny payload, super fast download!)
+    // Download ONLY the audio stream with anti-bot bypass headers (tiny payload, super fast download!)
     await ytDlpWrap.execPromise([
       target,
       '-f', 'ba', // Only request the audio stream
       '-x', 
-      '--audio-quality', '5', // Standard standard audio conversion
+      '--audio-quality', '5', // Standard audio conversion
       '--no-playlist',
+      '--no-check-certificates',
+      '--add-header', 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      '--add-header', 'Accept-Language: en-US,en;q=0.9',
       '-o', tempPattern
     ]);
     
