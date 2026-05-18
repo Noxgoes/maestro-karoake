@@ -63,15 +63,23 @@ export async function runAnalysisPipeline({ navigate, extractPitch }) {
         response = await fetch(presetPath);
         if (!response.ok) throw new Error('Local file not found');
       } catch (err) {
-        console.log(`[PIPELINE] Local preset not found. Fetching dynamic preview from iTunes API for: ${song}...`);
-        const itunesRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(song + ' ' + (artist || ''))}&limit=1&entity=song`);
-        const itunesData = await itunesRes.json();
-        if (itunesData.results && itunesData.results[0] && itunesData.results[0].previewUrl) {
-          const previewUrl = itunesData.results[0].previewUrl;
-          console.log(`[PIPELINE] iTunes success! Loading audio from preview: ${previewUrl}`);
-          response = await fetch(previewUrl);
-        } else {
-          throw new Error('Local preset file not found. Place it in client/public/presets/ directory.');
+        // Try local .m4a preset fallback before iTunes Search
+        try {
+          const m4aPath = presetPath.replace('.mp3', '.m4a');
+          console.log(`[PIPELINE] MP3 not found. Trying local M4A preset: ${m4aPath}`);
+          response = await fetch(m4aPath);
+          if (!response.ok) throw new Error('Local M4A not found');
+        } catch (m4aErr) {
+          console.log(`[PIPELINE] Local preset not found. Fetching dynamic preview from iTunes API for: ${song}...`);
+          const itunesRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(song + ' ' + (artist || ''))}&limit=1&entity=song`);
+          const itunesData = await itunesRes.json();
+          if (itunesData.results && itunesData.results[0] && itunesData.results[0].previewUrl) {
+            const previewUrl = itunesData.results[0].previewUrl;
+            console.log(`[PIPELINE] iTunes success! Loading audio from preview: ${previewUrl}`);
+            response = await fetch(previewUrl);
+          } else {
+            throw new Error('Local preset file not found. Place it in client/public/presets/ directory.');
+          }
         }
       }
       audioData = await response.arrayBuffer();
