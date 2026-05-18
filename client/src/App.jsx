@@ -340,19 +340,22 @@ function StudioPage() {
               { 
                 title: 'Kesariya', 
                 artist: 'Arijit Singh', 
-                cover: 'https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/37/1b/09/371b09fa-7e44-adbf-939e-d309cb9f3f4c/8902894363235_cover.jpg/120x120bb.jpg',
+                cover: '/presets/kesariya.jpg',
+                fallbackCover: 'https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/37/1b/09/371b09fa-7e44-adbf-939e-d309cb9f3f4c/8902894363235_cover.jpg/120x120bb.jpg',
                 preset: 'kesariya.mp3'
               },
               { 
                 title: 'Pashmina', 
                 artist: 'Amit Trivedi', 
-                cover: 'https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/b8/1c/b3/b81cb301-8bf8-d621-e034-789a7bb7d5d7/8902894356077_cover.jpg/120x120bb.jpg',
+                cover: '/presets/pashmina.jpg',
+                fallbackCover: 'https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/b8/1c/b3/b81cb301-8bf8-d621-e034-789a7bb7d5d7/8902894356077_cover.jpg/120x120bb.jpg',
                 preset: 'pashmina.mp3'
               },
               { 
                 title: 'Yeh Fitoor Mera', 
                 artist: 'Amit Trivedi', 
-                cover: 'https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/b8/1c/b3/b81cb301-8bf8-d621-e034-789a7bb7d5d7/8902894356077_cover.jpg/120x120bb.jpg',
+                cover: '/presets/yeh_fitoor_mera.jpg',
+                fallbackCover: 'https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/b8/1c/b3/b81cb301-8bf8-d621-e034-789a7bb7d5d7/8902894356077_cover.jpg/120x120bb.jpg',
                 preset: 'yeh_fitoor_mera.mp3'
               }
             ].map((track, i) => (
@@ -364,9 +367,15 @@ function StudioPage() {
                     artist: track.artist,
                     audioSourceTab: 'preset',
                     presetPath: `/presets/${track.preset}`,
-                    albumArt: track.cover.replace('120x120bb', '600x600bb'),
+                    albumArt: track.cover, // Pre-assign local path
                     error: null
                   });
+                  // Check if local image exists, if not set albumArt to fallback
+                  const img = new Image();
+                  img.src = track.cover;
+                  img.onerror = () => {
+                    useAppStore.setState({ albumArt: track.fallbackCover.replace('120x120bb', '600x600bb') });
+                  };
                   runAnalysisPipeline({ navigate, extractPitch });
                 }}
                 className="preset-card"
@@ -398,6 +407,11 @@ function StudioPage() {
                   src={track.cover} 
                   alt="" 
                   style={{ width: 44, height: 44, borderRadius: '8px', objectFit: 'cover' }} 
+                  onError={e => {
+                    if (e.currentTarget.src !== track.fallbackCover) {
+                      e.currentTarget.src = track.fallbackCover;
+                    }
+                  }}
                 />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ 
