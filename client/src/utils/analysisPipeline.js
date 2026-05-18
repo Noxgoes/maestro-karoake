@@ -61,14 +61,20 @@ export async function runAnalysisPipeline({ navigate, extractPitch }) {
       try {
         console.log(`[PIPELINE] Attempting to load local preset from: ${presetPath}`);
         response = await fetch(presetPath);
-        if (!response.ok) throw new Error('Local file not found');
+        const contentType = response.headers.get('Content-Type') || '';
+        if (!response.ok || contentType.includes('text/html')) {
+          throw new Error('Local file not found or is HTML redirect');
+        }
       } catch (err) {
         // Try local .m4a preset fallback before iTunes Search
         try {
           const m4aPath = presetPath.replace('.mp3', '.m4a');
           console.log(`[PIPELINE] MP3 not found. Trying local M4A preset: ${m4aPath}`);
           response = await fetch(m4aPath);
-          if (!response.ok) throw new Error('Local M4A not found');
+          const contentType = response.headers.get('Content-Type') || '';
+          if (!response.ok || contentType.includes('text/html')) {
+            throw new Error('Local M4A not found or is HTML redirect');
+          }
         } catch (m4aErr) {
           console.log(`[PIPELINE] Local preset not found. Fetching dynamic preview from iTunes API for: ${song}...`);
           const itunesRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(song + ' ' + (artist || ''))}&limit=1&entity=song`);
@@ -77,6 +83,10 @@ export async function runAnalysisPipeline({ navigate, extractPitch }) {
             const previewUrl = itunesData.results[0].previewUrl;
             console.log(`[PIPELINE] iTunes success! Loading audio from preview: ${previewUrl}`);
             response = await fetch(previewUrl);
+            const previewContentType = response.headers.get('Content-Type') || '';
+            if (!response.ok || previewContentType.includes('text/html')) {
+              throw new Error('iTunes preview not found or is HTML redirect');
+            }
           } else {
             throw new Error('Local preset file not found. Place it in client/public/presets/ directory.');
           }
